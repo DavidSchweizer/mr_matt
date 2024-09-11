@@ -1,5 +1,5 @@
 name: mr_matt
-description: "A new Flutter project."
+description: "A version of the MrMatt game."
 publish_to: 'none'
 version: 0.1.0
 
@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  cupertino_icons: ^1.0.8
+  intl: ^0.19.0
+  logger: ^2.4.0
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +21,26 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  assets:
+    # images
+    - ./img/
+    - ./img/small/Apples/
+    - ./img/small/Carrots/
+    - ./img/small/Hamburgers/
+    - ./img/small/Pumpkins/
+    - ./img/medium/Apples/
+    - ./img/medium/Hamburgers/
+    - ./img/medium/Pumpkins/
+    - ./img/medium/Mushrooms/
+    - ./img/large/Apples/
+    - ./img/large/Hamburgers/
+    - ./img/large/Pumpkins/
+    - ./img/large/Mushrooms/
+    - ./img/large/Tomatoes/
+    - ./img/huge/Apples/
+    - ./img/huge/Hamburgers/
+    - ./img/huge/Pumpkins/
+    - ./img/huge/Mushrooms/
+    - ./img/huge/Tomatoes/
+    
