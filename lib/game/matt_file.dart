@@ -19,6 +19,7 @@ class MattFile {
   Rating get rating => _rating;
   final List<MattLevel> _levels = [];
   List<MattLevel> get levels => _levels;
+  int get nrLevels=>_levels.length;
 
   bool isNotEmpty() {
     return _levels.isNotEmpty;

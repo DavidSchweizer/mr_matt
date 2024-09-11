@@ -94,7 +94,7 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   String _getLevelTitle() {
     if (_fileLoaded()&&_levelSelected()){
-      return '${getLevel()!.title} (level ${currentLevel??0+1})';
+      return '${getLevel()!.title} (level ${(currentLevel??0)+1})';
     }
     else { return "no level selected";}
   }
@@ -202,6 +202,11 @@ class _MrMattHomeState extends State<MrMattHome> {
                 const SizedBox(
                   width: 10,
                 ),
+            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+                const SizedBox(
+                  width: 10,
+                ),
+            MattLevelSelector(file: selectedFile, levelSelected: _selectLevel,),
               ]
               )
         ),
@@ -300,8 +305,15 @@ class _MrMattHomeState extends State<MrMattHome> {
       startNewGame(newFile);
     }
   }
+  void _selectLevel(int level) {
+    setState( () {currentLevel = level;
+                  _restartGameCheck('Abandon current level?');
+                  } );
+          
+  }
+
   void startNewGame(MattFile newFile) {
-    int newLevel = random(0,newFile.levels.length);
+    int newLevel = 0;
     MattGame newGame = MattGame(newFile.levels[newLevel].grid);
     stopwatch.reset();
     stopwatch.start();
@@ -363,9 +375,10 @@ class _MrMattHomeState extends State<MrMattHome> {
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
   }
-  void _restartGame() async {
+
+  void _restartGameCheck([String? message]) async {
     if (game==null || _counter == 0) {return;}
-    bool confirm = await askConfirm(context, "Really start again?");
+    bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {setState(() {    
           stopwatch.reset();         
           game = MattGame(selectedFile.levels[currentLevel??0].grid); 
@@ -373,7 +386,13 @@ class _MrMattHomeState extends State<MrMattHome> {
           stopwatch.start();
         });
         }
+
   }
+
+  void _restartGame() async {
+    _restartGameCheck("Really start again?");
+  }
+
   void _repeatMove(MoveType move) {
     int nrTimes = 0;
     switch (move){

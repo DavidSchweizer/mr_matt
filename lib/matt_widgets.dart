@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
 import 'game/matt_file.dart';
+import 'game/matt_level.dart';
+import 'log.dart';
 
 const String defaultImageStyle = 'large/Apples';
 // enum TileType {empty,grass,wall,stone,food,box1,box2,box3,bomb,mrMatt,loser}
@@ -103,4 +106,41 @@ class MattFileState extends State<MattGameLevelWidget>  {
     assert (_fileLoaded() && _levelSelected());
     return Center(child: MattGridWidget(assets: widget.assets, grid:widget.grid!, tileTapped:widget.tileTapped));
   }  
+}
+
+class MattLevelSelector extends StatefulWidget {
+  final MattFile? file;
+  final Function(int level)?levelSelected;
+  const MattLevelSelector({super.key, this.file, this.levelSelected}); 
+
+  @override
+  State<StatefulWidget> createState() => _MattLevelState();
+}
+
+class _MattLevelState extends State<MattLevelSelector>{
+  @override
+  Widget build(BuildContext context) {
+    return 
+      Row(children: _getLevelButtons(context),
+      );
+  }
+
+  Widget _getLevelButton(int level, bool enabled) {
+    return ElevatedButton(onPressed: enabled ? () { widget.levelSelected!(level);} : null, child: Text((level+1).toString()));
+  }
+  List<Widget> _getLevelButtons(context) {
+    List<Widget> result = [];
+    if (widget.file == null) {
+      result.add(const Text('<No game file loaded>'));
+    }
+    else if (widget.file!.nrLevels == 0) {
+      result.add(Text('<Game file ${widget.file!.title} has no levels>'));
+    }
+    else{
+      for (int level = 0; level < widget.file!.nrLevels; level++){
+        result.add(_getLevelButton(level, level.isEven));
+      }          
+    }
+    return result;
+  }
 }
