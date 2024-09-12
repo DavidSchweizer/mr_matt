@@ -3,6 +3,20 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+class RowCol {
+  late int row;
+  late int col;
+  RowCol(this.row, this.col);
+  RowCol.copy(RowCol value) {
+    row = value.row;
+    col = value.col;
+  }
+  @override
+  String toString() {
+    return '[$row,$col]';
+  }
+}
+
 enum TileType {empty, mrMatt, stone, wall, bomb, box1, box2, box3, grass, food, loser}
 class Tile {
   late TileType _tileType;
@@ -94,20 +108,6 @@ class Tile {
     else if (tileType == TileType.box1) {newType=TileType.empty;}
     else {throw(ArgumentError('Unexpected tiletype "$tile"'));}
     return Tile(newType,tile.row,tile.col);  
-  }
-}
-
-class RowCol {
-  late int row;
-  late int col;
-  RowCol(this.row, this.col);
-  RowCol.copy(RowCol value) {
-    row = value.row;
-    col = value.col;
-  }
-  @override
-  String toString() {
-    return '[$row,$col]';
   }
 }
 
@@ -262,7 +262,7 @@ int random(int start, int end) {
 TileType getRandomTile(){
   const Map<int,TileType> mapToTile = 
   {0:TileType.empty, 1:TileType.stone, 2:TileType.wall, 3:TileType.bomb, 4:TileType.box1, 5:TileType.box2, 6:TileType.box3, 7:TileType.grass, 8:TileType.food};
-  return mapToTile[random(0,9)]??TileType.empty;
+  return mapToTile[random(0,mapToTile.length)]??TileType.empty;
 }
 
 Grid createRandomGrid() {

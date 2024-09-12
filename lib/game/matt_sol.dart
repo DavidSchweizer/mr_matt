@@ -1,6 +1,7 @@
 import 'dart:io';
 
 // ignore: unused_import
+import 'package:flutter/cupertino.dart';
 import 'package:mr_matt/log.dart';
 
 import 'matt_game.dart';
@@ -13,6 +14,14 @@ class MattLevelSolution {
   late List<MoveRecord> moves;
   late int checksum; // this is not used, so we can omit it
   MattLevelSolution({required this.level,required this.nrMoves, required this.player, required this.game, required this.moves, this.checksum=0});
+  String toExport() {
+    String firstPart = '${level}X $nrMoves $player|$game|';
+    String movesPart = '';
+    for (MoveRecord move in moves){
+      movesPart += '${move.repeat>0?move.repeat.toString():""}${moveToCode[move.move]}';
+    }
+    return '$firstPart$movesPart $checksum';
+  }
 }
 
 class MattSolutionFile {
@@ -24,15 +33,25 @@ class MattSolutionFile {
   String get filename=>_filename;
   String _versionLine="";
   String get versionLine=>_versionLine;
-  List<MattLevelSolution> solutions=[];
-
-  Future parseFile(String filename) async {
+  final List<MattLevelSolution> solutions=[];
+  
+  Future<bool> parseFile(String filename) async {
     _filename=filename;
+    bool result = true;
     List<String> lines = await readLines(filename);
-    parseVersionLine(lines[0]);
-    for (int i = 1; i < lines.length; i++){
-      solutions.add(parseLevel(lines[i]));
+    if (lines.isEmpty) 
+      { return false;}
+    try {
+      parseVersionLine(lines[0]);
+      for (int i = 1; i < lines.length; i++){
+        solutions.add(parseLevel(lines[i]));
+      }
     }
+    on Exception catch(e) {
+      logDebug('Error parsing file: $e');
+      result = false;
+    }
+    return result;
   }
   void parseVersionLine(String line){
     _versionLine = line.trim();    
@@ -51,7 +70,7 @@ class MattSolutionFile {
   Map<String,String> _parseLine(String line) {     
     RegExpMatch? match = lineRegex.firstMatch(line);
     if (match == null) {
-      throw('unexpected line in solution file:\n\t[$line]');
+      throw('unexpected line pattern in solution file:\n\t[$line]');
     }
     Map<String,String> matchedNames = {};
     for (String name in match.groupNames) {
@@ -73,6 +92,36 @@ class MattSolutionFile {
   }
   Future <List<String>> readLines(String filename) async {
     final File file = File(filename);
-    return file.readAsLines();
+    bool existing = await file.exists();
+    if (!existing) {return [];}
+    else {return file.readAsLines();}
+  }
+  void _writeToFile(IOSink file) {
+    file.writeln(versionLine);
+    for (MattLevelSolution solution in solutions) {
+      file.writeln(solution.toExport());
+    }
+  }
+  Future<bool> writeToFile(String filename) async {
+    final IOSink file = File(filename).openWrite();
+    file.done.catchError((e) { logDebug('error opening or writing to file $e');});
+    bool result = true;
+    try {
+      _writeToFile(file);
+    }
+    on FileSystemException catch (e){
+      logDebug('error writing file: $e');
+      result = false;
+    }
+    finally {
+      await file.flush();
+      await file.close();
+    }
+    return result;
+  }
+  void clear() {
+    _filename='';
+    _versionLine='';
+    solutions.clear();
   }
 }

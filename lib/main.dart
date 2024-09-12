@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/matt_sol.dart';
 
+import 'file_util.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
@@ -50,7 +51,8 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattGame? game;
   MattFile? newFile;
   int? currentLevel;
-
+  MattSolutionFile solutions = MattSolutionFile();
+  
   bool _fileLoaded() =>selectedFile.isNotEmpty();
   bool _filesLoaded() => !fileData.isEmpty();
   bool _levelSelected() =>currentLevel!=null;
@@ -254,11 +256,17 @@ class _MrMattHomeState extends State<MrMattHome> {
     return fileData.nrFiles() > nBefore;
   }
 
+  void loadSolutions(MattFile? file) async {
+    solutions.clear();
+    if (file == null) {return;}
+    String filename = file.filename;
+    solutions.parseFile(pathWithExtension(filename,'.sol'));
+  }
   void callBackFile(MattFile? file) {
     newFile = file;
+    loadSolutions(newFile);
     logDebug('file changed: $file');
   }
-
   Widget _loadFilesFirstNotLoaded(BuildContext context) {
     assert (!_filesLoaded());
     return FutureBuilder<bool>(future: loadFileData(), 
@@ -314,7 +322,7 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   void startNewGame(MattFile newFile) {
     int newLevel = 0;
-    MattGame newGame = MattGame(newFile.levels[newLevel].grid);
+    MattGame newGame = MattGame(newFile.levels[newLevel].grid, level: newLevel, game: newFile.title);
     stopwatch.reset();
     stopwatch.start();
     setState(() {
@@ -381,18 +389,19 @@ class _MrMattHomeState extends State<MrMattHome> {
     bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {setState(() {    
           stopwatch.reset();         
-          game = MattGame(selectedFile.levels[currentLevel??0].grid); 
+          int newLevel = currentLevel??0;
+          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
           _counter = 0;
           stopwatch.start();
         });
         }
 
   }
-
   void _restartGame() async {
     _restartGameCheck("Really start again?");
-    MattSolutionFile testing = MattSolutionFile();
-    testing.parseFile('d:/mrmatt/chicago_2.sol');
+    // MattSolutionFile testing = MattSolutionFile();
+    // await testing.parseFile('d:/mrmatt/chicago_2.sol');
+    // await testing.writeToFile('copycopy.sol');
   }
 
   void _repeatMove(Move move) {

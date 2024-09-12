@@ -1,10 +1,14 @@
 import "dart:collection";
+import "package:mr_matt/game/matt_sol.dart";
+
 import "matt_grid.dart";
 import "matt_fall.dart";
 import "../log.dart";
 
 enum Move  {none, left,up,right,down}
 const Map<String,Move> moveFromCode = {'L':Move.left, 'U':Move.up, 'R': Move.right, 'D': Move.down};
+const Map<Move,String> moveToCode   = {Move.left: 'L', Move.up:'U', Move.right:'R', Move.down:'D', Move.none: ''};
+
 
 bool isHorizontalMove(Move move)=>move==Move.left || move==Move.right;
 bool isVerticalMove(Move move)=>move==Move.up || move==Move.down;
@@ -55,13 +59,27 @@ class MattGame {
   
   late RowCol mrMatt; // location of MrMatt
   
+  late int level;
+  late String game;
+
   Queue<GameSnapshot> snapshots = Queue();
 
-  MattGame(Grid grid){
+  MattGame(Grid grid, {required this.level, required this.game}){
     _startGrid = grid;
     this.grid = grid;
     nrFood = grid.nrFood();    
     mrMatt=grid.findMrMatt();        
+  }
+  MattLevelSolution export(String player) {
+    int nrMoves = 0;
+    List<MoveRecord> moves = [];
+    for (GameSnapshot snapshot in snapshots) {
+      nrMoves += snapshot.nrMoves;
+      moves.add(snapshot.moveRecord);
+    }
+    return MattLevelSolution(
+            level: level, nrMoves: nrMoves, 
+            player: player, game: game, moves: moves);
   }
 
   MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
@@ -230,10 +248,10 @@ class MattGame {
   }
   int undoLast() {
     if (snapshots.isEmpty) {return 0;}
-    GameSnapshot lastMoveRec = snapshots.removeLast();
-    grid = lastMoveRec.previousGrid;
+    GameSnapshot lastSnapshot = snapshots.removeLast();
+    grid = lastSnapshot.previousGrid;
     nrFood = grid.nrFood();    
     mrMatt = grid.findMrMatt(); 
-    return lastMoveRec.nrMoves;
+    return lastSnapshot.nrMoves;
   }
 }
