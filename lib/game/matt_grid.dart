@@ -148,6 +148,7 @@ class GridColumn {
     if (_rows.isNotEmpty){
       _rows = [];
     }
+    _col = column.col;
     for (int row in GridConst.rowRange()) {
       _rows.add(Tile.copy(column.rows[row]));
     }

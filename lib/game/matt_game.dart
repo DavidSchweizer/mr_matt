@@ -3,29 +3,42 @@ import "matt_grid.dart";
 import "matt_fall.dart";
 import "../log.dart";
 
-enum MoveType  {none, left,up,right,down}
-bool isHorizontalMove(MoveType move)=>move==MoveType.left || move==MoveType.right;
-bool isVerticalMove(MoveType move)=>move==MoveType.up || move==MoveType.down;
+enum Move  {none, left,up,right,down}
+const Map<String,Move> moveFromCode = {'L':Move.left, 'U':Move.up, 'R': Move.right, 'D': Move.down};
+
+bool isHorizontalMove(Move move)=>move==Move.left || move==Move.right;
+bool isVerticalMove(Move move)=>move==Move.up || move==Move.down;
 enum MoveResult {invalid,ok,stuck,killed,finish,} // move is invalid, move OK, MrMatt can't move any more, MrMatt was killed, last apple eaten (Win!)
 
 class MoveRecord {
+  late Move move;
+  late int repeat;
+  late MoveResult? result;
+  MoveRecord({required this.move, required this.repeat, this.result});
+  int get nrMoves=>repeat+1;
+}
+
+class GameSnapshot {
   late Grid _previousGrid;
   Grid get previousGrid =>_previousGrid;
-  late MoveType _move;
-  MoveType get move =>_move;
-  late int _repeat;
-  int get repeat =>_repeat;
-  late MoveResult _result;
-  MoveResult get result =>_result;
+  late MoveRecord _moveRecord; 
+  MoveRecord get moveRecord =>_moveRecord;
+  // late Move _move;
+  // Move get move =>_move;
+  // late int _repeat;
+  // int get repeat =>_repeat;
+  // late MoveResult _result;
+  // MoveResult get result =>_result;
+  // above part will be modified 
+
   late RowCol? _mrMatt;
   RowCol get mrMatt =>_mrMatt??previousGrid.findMrMatt();
-  MoveRecord(Grid previousGrid, MoveType move, {MoveResult? result,int? repeat, RowCol? mrMatt}) {
+  GameSnapshot(Grid previousGrid, Move move, {MoveResult? result,int? repeat, RowCol? mrMatt}) {
     _previousGrid = previousGrid;
-    _move  = move;
-    _result = result??MoveResult.invalid;
-    _repeat = repeat??0;
+    _moveRecord  = MoveRecord(move:move, repeat:repeat??0, result: result);
     _mrMatt = mrMatt;
   }
+  int get nrMoves=>moveRecord.nrMoves;
 }
 
 class MattGame {
@@ -42,7 +55,7 @@ class MattGame {
   
   late RowCol mrMatt; // location of MrMatt
   
-  Queue<MoveRecord> moves = Queue();
+  Queue<GameSnapshot> snapshots = Queue();
 
   MattGame(Grid grid){
     _startGrid = grid;
@@ -51,6 +64,9 @@ class MattGame {
     mrMatt=grid.findMrMatt();        
   }
 
+  MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
+  GameSnapshot? get lastSnapshot => snapshots.isNotEmpty? snapshots.last:null;
+  
   bool _moveValid(int row,int col) {    
     if (!GridConst.isGridRowCol(row,col)) return false;      
 
@@ -75,7 +91,7 @@ class MattGame {
     logDebug('---next cell $nextCell  (empty: $isEmpty)');    
     return isEmpty;
   }
-  bool canMove(MoveType move) {
+  bool canMove(Move move) {
     if (_stuffAboveMrMattBlocksVerticalMove(move)) {
       return false;
     }
@@ -111,13 +127,13 @@ class MattGame {
     }
     throw (StateError('Unexpected target tile type $target'));
   }
-  RowCol _rolColFromMove(MoveType move){ 
+  RowCol _rolColFromMove(Move move){ 
     switch (move) {
-      case MoveType.left: return RowCol(mrMatt.row, mrMatt.col-1);
-      case MoveType.right: return RowCol(mrMatt.row, mrMatt.col+1);
-      case MoveType.up: return RowCol(mrMatt.row-1, mrMatt.col);
-      case MoveType.down: return RowCol(mrMatt.row+1, mrMatt.col);
-      case MoveType.none: return RowCol(mrMatt.row, mrMatt.col);
+      case Move.left: return RowCol(mrMatt.row, mrMatt.col-1);
+      case Move.right: return RowCol(mrMatt.row, mrMatt.col+1);
+      case Move.up: return RowCol(mrMatt.row-1, mrMatt.col);
+      case Move.down: return RowCol(mrMatt.row+1, mrMatt.col);
+      case Move.none: return RowCol(mrMatt.row, mrMatt.col);
       }
   }
   
@@ -130,9 +146,9 @@ class MattGame {
     mrMatt = RowCol(row,col);
     logDebug('Moved mrMatt to $mrMatt');
   }
-  MoveResult _moveObject(int row, int col, MoveType move, FallHandler handler) {
+  MoveResult _moveObject(int row, int col, Move move, FallHandler handler) {
     assert (isHorizontalMove(move));
-    int targetCol = move == MoveType.left ? col-1 : col+1;
+    int targetCol = move == Move.left ? col-1 : col+1;
     assert (grid.cell(row,targetCol).isEmpty());
     logDebug('moving object at [$row,$col] to $targetCol');
     grid.cell(row,targetCol).tileType = grid.cell(row,col).tileType;
@@ -141,7 +157,7 @@ class MattGame {
     return dropResult;
   }
     
-  MoveResult performMove(MoveType move, [int repeat = 0]) {
+  MoveResult performMove(Move move, [int repeat = 0]) {
     logDebug('Start perform move ($move) target ($move) repeat:$repeat');    
     if (!canMove(move)) {
       logDebug('--- invalid move');    
@@ -151,27 +167,29 @@ class MattGame {
     MoveResult result;
     RowCol mrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
     Grid current = Grid.copy(grid);
+    int repeated = 0;
     do {
       result = _performMove(move, handler);
-      repeat -=1;
-    } while (repeat >= 0 && result == MoveResult.ok && canMove(move));
-    moves.addLast(MoveRecord(current, move, result: result, repeat: repeat, mrMatt: mrMatt));  
+      if (result == MoveResult.ok)
+        {repeated += 1;}
+    } while (repeated < repeat && result == MoveResult.ok && canMove(move));
     if (isStuck())
       { 
         mrMatt = grid.findMrMatt();
         grid.cell(mrMatt.row,mrMatt.col).setLoser();
         result = MoveResult.stuck;
       }
-    logDebug('--- performMove result is $result');
+    snapshots.addLast(GameSnapshot(current, move, result: result, repeat: repeated-1, mrMatt: mrMatt));  
+    logDebug('performMove ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
-    for (MoveType move in [MoveType.left,MoveType.up, MoveType.down,MoveType.right]) {
+    for (Move move in [Move.left,Move.up, Move.down,Move.right]) {
       if (canMove(move)) {return false;}
     }
     return true;
   }
-  MoveResult _performMove(MoveType move, FallHandler handler) {
+  MoveResult _performMove(Move move, FallHandler handler) {
     logDebug('starting _performMove ($move) target ($move)');    
     RowCol target = _rolColFromMove(move);
     int currentRow = mrMatt.row;
@@ -198,10 +216,10 @@ class MattGame {
     return result;
   }
 
-  bool _stuffAboveMrMattBlocksVerticalMove(MoveType move) {
+  bool _stuffAboveMrMattBlocksVerticalMove(Move move) {
       switch (move) {
-        case MoveType.up: 
-        case MoveType.down: {
+        case Move.up: 
+        case Move.down: {
           if (GridConst.isTop(mrMatt.row)) return false;
           Tile cell = grid.cell(mrMatt.row-1,mrMatt.col);
           return cell.isMovable();
@@ -210,11 +228,12 @@ class MattGame {
           return false; 
       }
   }
-  void undoLast() {
-    if (moves.isEmpty) {return;}
-    MoveRecord lastMove = moves.removeLast();
-    grid = lastMove.previousGrid;
+  int undoLast() {
+    if (snapshots.isEmpty) {return 0;}
+    GameSnapshot lastMoveRec = snapshots.removeLast();
+    grid = lastMoveRec.previousGrid;
     nrFood = grid.nrFood();    
-    mrMatt = grid.findMrMatt();    
+    mrMatt = grid.findMrMatt(); 
+    return lastMoveRec.nrMoves;
   }
 }

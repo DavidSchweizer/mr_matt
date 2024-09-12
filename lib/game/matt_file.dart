@@ -49,7 +49,8 @@ class MattFile {
     return lines.sublist(3);   
   }
   List<String> parseLevel(List<String> lines) {    
-    MattLevel newLevel = MattLevel(levels.length+1, lines[0]);
+    int level = levels.length+1;
+    MattLevel newLevel = MattLevel(level, lines[0], level == 1);
     for(int row in GridConst.rowRange()){
       String line = lines[row+1].padRight(GridConst.mattWidth);
       for(int col in GridConst.colRange()){

@@ -138,7 +138,7 @@ class _MattLevelState extends State<MattLevelSelector>{
     }
     else{
       for (int level = 0; level < widget.file!.nrLevels; level++){
-        result.add(_getLevelButton(level, level.isEven));
+        result.add(_getLevelButton(level, widget.file!.levels[level].accessible));
       }          
     }
     return result;

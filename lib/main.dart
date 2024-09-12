@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mr_matt/game/matt_sol.dart';
 
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
@@ -73,15 +74,15 @@ class _MrMattHomeState extends State<MrMattHome> {
     else {lastKeyDown = null;}
     KeyEventResult result = KeyEventResult.handled;
     switch (keyEvent.logicalKey){
-      case LogicalKeyboardKey.arrowLeft: _gameMove(MoveType.left);
-      case LogicalKeyboardKey.arrowRight: _gameMove(MoveType.right);
-      case LogicalKeyboardKey.arrowUp: _gameMove(MoveType.up);
-      case LogicalKeyboardKey.arrowDown: _gameMove(MoveType.down);
-      case LogicalKeyboardKey.keyA: _gameMove(MoveType.left);
-      case LogicalKeyboardKey.home: _repeatMove(MoveType.left);
-      case LogicalKeyboardKey.end: _repeatMove(MoveType.right);
-      case LogicalKeyboardKey.pageUp: _repeatMove(MoveType.up);
-      case LogicalKeyboardKey.pageDown: _repeatMove(MoveType.down );
+      case LogicalKeyboardKey.arrowLeft: _gameMove(Move.left);
+      case LogicalKeyboardKey.arrowRight: _gameMove(Move.right);
+      case LogicalKeyboardKey.arrowUp: _gameMove(Move.up);
+      case LogicalKeyboardKey.arrowDown: _gameMove(Move.down);
+      case LogicalKeyboardKey.keyA: _gameMove(Move.left);
+      case LogicalKeyboardKey.home: _repeatMove(Move.left);
+      case LogicalKeyboardKey.end: _repeatMove(Move.right);
+      case LogicalKeyboardKey.pageUp: _repeatMove(Move.up);
+      case LogicalKeyboardKey.pageDown: _repeatMove(Move.down );
       case LogicalKeyboardKey.keyZ: 
         if (HardwareKeyboard.instance.isControlPressed) {
           _undoMove();
@@ -308,8 +309,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _selectLevel(int level) {
     setState( () {currentLevel = level;
                   _restartGameCheck('Abandon current level?');
-                  } );
-          
+                  } );          
   }
 
   void startNewGame(MattFile newFile) {
@@ -324,18 +324,18 @@ class _MrMattHomeState extends State<MrMattHome> {
     });
   }
   void _moveLeft() {
-    _gameMove(MoveType.left);
+    _gameMove(Move.left);
   }
   void _moveRight() {
-    _gameMove(MoveType.right);
+    _gameMove(Move.right);
   }
   void _moveUp() {
-    _gameMove(MoveType.up);
+    _gameMove(Move.up);
   }
   void _moveDown() {
-    _gameMove(MoveType.down);
+    _gameMove(Move.down);
   }
-  void _gameMove (MoveType move, [int repeat = 0]) {
+  void _gameMove (Move move, [int repeat = 0]) {
     if (game == null) {return;}    
     if (!game!.canMove(move)) {       
       logDebug('Uh-oh: can not perform move $move');
@@ -343,7 +343,8 @@ class _MrMattHomeState extends State<MrMattHome> {
     MoveResult result = MoveResult.invalid;
     setState(() {
       result = game!.performMove(move, repeat);
-      _counter++;
+      GameSnapshot? lastSnapshot = game!.lastSnapshot;
+      _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
     });
     switch  (result) {
       case MoveResult.finish: { _winner();}
@@ -360,18 +361,17 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     if (tile.row == game!.mrMatt.row) {
       int delta = tile.col - game!.mrMatt.col;
-      _gameMove(delta > 0 ? MoveType.right: MoveType.left, delta.abs()-1);
+      _gameMove(delta > 0 ? Move.right: Move.left, delta.abs()-1);
     }
     else if (tile.col == game!.mrMatt.col) {
       int delta = tile.row - game!.mrMatt.row;
-      _gameMove(delta > 0 ? MoveType.down: MoveType.up, delta.abs()-1);
+      _gameMove(delta > 0 ? Move.down: Move.up, delta.abs()-1);
     }
   }
   void _undoMove(){
     if (game==null || _counter == 0) {return;}      
-    setState(() {
-      game!.undoLast(); 
-      _counter -= 1;
+    setState(() {      
+      _counter -= game!.undoLast();
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
   }
@@ -391,15 +391,17 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   void _restartGame() async {
     _restartGameCheck("Really start again?");
+    MattSolutionFile testing = MattSolutionFile();
+    testing.parseFile('d:/mrmatt/chicago_2.sol');
   }
 
-  void _repeatMove(MoveType move) {
+  void _repeatMove(Move move) {
     int nrTimes = 0;
     switch (move){
-      case MoveType.left: nrTimes = -game!.mrMatt.col;
-      case MoveType.right: nrTimes = GridConst.mattWidth-game!.mrMatt.col+1;
-      case MoveType.up: nrTimes = -game!.mrMatt.row;
-      case MoveType.down: nrTimes = GridConst.mattHeight-game!.mrMatt.row+1;
+      case Move.left: nrTimes = -game!.mrMatt.col;
+      case Move.right: nrTimes = GridConst.mattWidth-game!.mrMatt.col+1;
+      case Move.up: nrTimes = -game!.mrMatt.row;
+      case Move.down: nrTimes = GridConst.mattHeight-game!.mrMatt.row+1;
       default: return;
     }
     return _gameMove(move, nrTimes.abs());
@@ -409,13 +411,17 @@ class _MrMattHomeState extends State<MrMattHome> {
     showMessageDialog(context, killed? 
             "Oh no, you've killed Mr. Matt..." :
             "Oh no, Mr. Matt can not move any more. You lost!");
-
- }
-  void _winner() {
+  }
+  void _winner() async {
     setState(() {stopwatch.stop();});
     String format = stopwatch.hours > 0 ? 'hh:mm:ss':'mm:ss';    
+    bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
     showMessageDialog(
-    context, 'You have completed this level in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
+      context, 'You have completed ${gameSolved? "the whole game" : "this level"} in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
+    if (!gameSolved) {
+      selectedFile.levels[currentLevel!+1].accessible = true;
+      setState(() { _selectLevel(currentLevel!+1);});
+    }
   }
   void _loader() {
     loadFile(context);

@@ -8,7 +8,8 @@ class MattLevel {
   String title = "";
   String checkLine = "";
   Grid grid = Grid();
-  MattLevel(this.level, this.title);
+  bool accessible = false;
+  MattLevel(this.level, this.title, this.accessible);
   void dump(){
     if (kDebugMode) {
       print('Level: $level    title: $title');
