@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mr_matt/game/matt_sol.dart';
-
-import 'file_util.dart';
+import 'package:mr_matt/game/matt_hof.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
@@ -12,6 +10,7 @@ import 'matt_select_file.dart';
 import 'matt_widgets.dart';
 import 'widgets/dialogs.dart';
 import 'widgets/stopwatch.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   runApp(const MrMattApp());
@@ -51,7 +50,10 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattGame? game;
   MattFile? newFile;
   int? currentLevel;
-  MattSolutionFile solutions = MattSolutionFile();
+  String player = "Mr David #1899";
+
+  // MattSolutionFile solutions = MattSolutionFile();
+  MattHallOfFameFile solvedGameLevels = MattHallOfFameFile();
   
   bool _fileLoaded() =>selectedFile.isNotEmpty();
   bool _filesLoaded() => !fileData.isEmpty();
@@ -114,7 +116,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: Text('Mr. Matt | ${_getTitle()}'),
+          title: Text('Mr. Matt ($player) | ${_getTitle()}'),
         ),
         bottomNavigationBar: BottomAppBar(
           color: Theme.of(context).colorScheme.inversePrimary,
@@ -245,31 +247,44 @@ class _MrMattHomeState extends State<MrMattHome> {
     
   }
 
-  Future <bool> loadFileData() async {
+  Future <bool> loadFileData(bool first) async {
+    if (first) 
+      {await loadHallOfFame();}
     int nBefore = fileData.nrFiles();
     await fileData.readDirectory('mat');
     newFile = fileData.mattFiles[0];
     logDebug('resultaat loadFileData: ');
     for (MattFile entry in fileData.mattFiles) {
       logDebug('file: $entry');
+      MattLevelHallOfFameEntry? maxLevelEntry = solvedGameLevels.highestLevel(entry.title, player);
+      int maxLevel = maxLevelEntry != null ? maxLevelEntry.level : 1;
+      for (MattLevel level in entry.levels) {
+        level.accessible = level.level <= maxLevel;
+      }
     }
     return fileData.nrFiles() > nBefore;
   }
 
-  void loadSolutions(MattFile? file) async {
-    solutions.clear();
-    if (file == null) {return;}
-    String filename = file.filename;
-    solutions.parseFile(pathWithExtension(filename,'.sol'));
+  // void loadSolutions(MattFile? file) async {
+  //   solutions.clear();
+  //   if (file == null) {return;}
+  //   String filename = file.filename;
+  //   solutions.parseFile(pathWithExtension(filename,'.sol'));
+  // }
+
+  Future loadHallOfFame() async {
+    solvedGameLevels.clear();
+    solvedGameLevels.parseFile(p.join('.', 'sol', 'mrmatt.hof'));
   }
+
   void callBackFile(MattFile? file) {
     newFile = file;
-    loadSolutions(newFile);
+    // loadSolutions(newFile);
     logDebug('file changed: $file');
   }
   Widget _loadFilesFirstNotLoaded(BuildContext context) {
     assert (!_filesLoaded());
-    return FutureBuilder<bool>(future: loadFileData(), 
+    return FutureBuilder<bool>(future: loadFileData(true), 
             builder:(context, snapshot) {
               if (snapshot.hasData) {
                 return 
@@ -300,7 +315,7 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   void loadFile(BuildContext context) async {
     if (fileData.mattFiles.isEmpty) {
-      await loadFileData();
+      await loadFileData(false);
     }
     if (fileData.mattFiles.isEmpty) {
       if (context.mounted) {

@@ -1,8 +1,8 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-  import 'widgets/dialogs.dart';
-  import 'log.dart';
-  import 'game/matt_file.dart';
+import 'widgets/dialogs.dart';
+import 'log.dart';
+import 'game/matt_file.dart';
 import 'game/matt_level.dart';
 
 double aspect = 432/744; // bitmap size of background pic
