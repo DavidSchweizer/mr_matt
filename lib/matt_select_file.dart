@@ -8,10 +8,10 @@ import 'game/matt_level.dart';
 double aspect = 432/744; // bitmap size of background pic
 
   class MattSelectFileTile extends StatefulWidget {
-    final MattFiles? files;    
+    final MattFiles files;    
     final MattFile? initialFile;
     final void Function(MattFile? file)? fileChanged;
-    const MattSelectFileTile({super.key, this.files, this.initialFile, this.fileChanged});
+    const MattSelectFileTile({super.key, required this.files, this.initialFile, this.fileChanged});
     @override
     State<MattSelectFileTile> createState()=>_MattSelectFileState();
     }
@@ -22,7 +22,7 @@ double aspect = 432/744; // bitmap size of background pic
     Map<Rating,bool> ratings = {Rating.easy: true, Rating.moderate: true, Rating.hard: true, Rating.tough: true, Rating.unknown: false};
 
     MattFile? _findSelectedFile() {
-      if (widget.files == null) 
+      if (widget.files.isEmpty) 
         {return null;}
       else {        
         _selectedFile = widget.initialFile;
@@ -33,7 +33,7 @@ double aspect = 432/744; // bitmap size of background pic
           else { _selectedFile = null;}
         }
         if (_selectedFile == null) {
-          for (MattFile file in widget.files!.mattFiles) {
+          for (MattFile file in widget.files.mattFiles) {
             if (ratings[file.rating]??false) {
               return file;
             }
@@ -52,14 +52,14 @@ double aspect = 432/744; // bitmap size of background pic
                     });
                 },);
     }
-    List<DropdownMenuEntry<MattFile>> getList(MattFiles? files) {
+    List<DropdownMenuEntry<MattFile>> getList(MattFiles files) {
       Map<Rating,Color> ratingColors = 
         {Rating.easy: Colors.green,
         Rating.moderate: Colors.grey,
         Rating.hard: Colors.orange,
         Rating.tough: Colors.red};
   
-      return files!.mattFiles
+      return files.mattFiles
         .where((file)=>ratings[file.rating]??false)
         .map<DropdownMenuEntry<MattFile>>(
                               (MattFile file) {
@@ -163,9 +163,9 @@ double aspect = 432/744; // bitmap size of background pic
   }
 
   class MattSelectFileDialog extends StatefulWidget {
-    final MattFiles? files;
+    final MattFiles files;
     final MattFile? initialFile;
-    const MattSelectFileDialog({super.key, this.files, this.initialFile});
+    const MattSelectFileDialog({super.key, required this.files, this.initialFile});
     
     @override
     State<StatefulWidget> createState() =>_MattSelectFileDialogState();

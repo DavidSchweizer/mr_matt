@@ -97,7 +97,7 @@ class MattFiles {
   final List<MattFile> mattFiles = [];  
   bool get isEmpty=>mattFiles.isEmpty;
   bool get isNotEmpty=>mattFiles.isNotEmpty;
-  int nrFiles()=>mattFiles.length;
+  int get nrFiles=>mattFiles.length;
   Future<List<String>> readDirectoryNames(String directoryPath) async {
     List<String> fileNames= [];
     Directory directory = Directory(directoryPath);    

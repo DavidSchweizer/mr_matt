@@ -7,7 +7,7 @@ class GameFiles{
   Map<String,MattFiles> matFileData = {};
   Map<String,MattSolutionFile> solutions = {};
   Map<String,MattHallOfFameFile> hallOfFames = {};
-  
+  String currentMatDirectory = "";
   Future<bool> loadMatFileData(String directory) async {
     directory = p.canonicalize(directory);
     if (matFileData[directory] != null) {// already loaded 
@@ -17,8 +17,20 @@ class GameFiles{
     await newData.readDirectory(directory);
     if (newData.isEmpty) {return false; }
     matFileData[directory] = newData;
+    currentMatDirectory = directory;
     return true;
   }
+  MattFiles _getMattFiles() => matFileData[currentMatDirectory]?? MattFiles();
+
+  int getNrFiles() {
+    MattFiles files = _getMattFiles();
+    return files.nrFiles;
+  }
+  Iterable<MattFile> getMatFile() sync* {
+    MattFiles files = _getMattFiles();
+    for (MattFile file in files.mattFiles) {yield file;}
+  }
+
   String _solutionFileName(String directory, String gameFileName){
     const String solExtension = '.sol';
     String gameName= p.basenameWithoutExtension(gameFileName);

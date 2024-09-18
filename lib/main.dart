@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mr_matt/game/game_files.dart';
 import 'package:mr_matt/game/matt_hof.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
@@ -41,9 +42,11 @@ class MrMattHome extends StatefulWidget {
 }
 
 class _MrMattHomeState extends State<MrMattHome> {
+  final String matDirectory = p.canonicalize('mat');
+
   int _counter = 0;
   final MattAssets mattAssets = MattAssets();
-  MattFiles fileData = MattFiles();
+  // MattFiles fileData = MattFiles();
   SecondsStopwatch stopwatch = SecondsStopwatch();
   LogicalKeyboardKey? lastKeyDown;
   MattFile selectedFile=MattFile();
@@ -52,11 +55,16 @@ class _MrMattHomeState extends State<MrMattHome> {
   int? currentLevel;
   String player = "Mr David #1899";
 
+  GameFiles gameFiles = GameFiles();
+  
   // MattSolutionFile solutions = MattSolutionFile();
   MattHallOfFameFile solvedGameLevels = MattHallOfFameFile();
   
   bool _fileLoaded() =>selectedFile.isNotEmpty();
-  bool _filesLoaded() => !fileData.isEmpty();
+  bool _filesLoaded() {
+    MattFiles? fileData = gameFiles.matFileData[matDirectory];
+    return fileData != null ? fileData.isEmpty: false;
+  }
   bool _levelSelected() =>currentLevel!=null;
 
   MattLevel? getLevel() {
@@ -248,21 +256,29 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
 
   Future <bool> loadFileData(bool first) async {
-    if (first) 
-      {await loadHallOfFame();}
-    int nBefore = fileData.nrFiles();
-    await fileData.readDirectory('mat');
-    newFile = fileData.mattFiles[0];
-    logDebug('resultaat loadFileData: ');
-    for (MattFile entry in fileData.mattFiles) {
-      logDebug('file: $entry');
-      MattLevelHallOfFameEntry? maxLevelEntry = solvedGameLevels.highestLevel(entry.title, player);
-      int maxLevel = maxLevelEntry != null ? maxLevelEntry.level : 1;
-      for (MattLevel level in entry.levels) {
-        level.accessible = level.level <= maxLevel;
+    // if (first) 
+    //   {await gameFiles.loadHallOfFameFile();}
+    try {
+      bool result = await gameFiles.loadMatFileData(matDirectory);
+      if (!result) {return false; }
+      // MattFile?  newFile = gameFiles.getMatFile().first;
+        
+      logDebug('resultaat loadFileData: ');
+      for (MattFile entry in gameFiles.getMatFile()) {       
+        logDebug('file: $entry');
+        // MattLevelHallOfFameEntry? maxLevelEntry = solvedGameLevels.highestLevel(entry.title, player);
+        // int maxLevel = maxLevelEntry != null ? maxLevelEntry.level : 1;
+        int maxLevel = 1;
+        for (MattLevel level in entry.levels) {
+          level.accessible = level.level <= maxLevel;
+        }
       }
+      return gameFiles.getNrFiles() > 0;
     }
-    return fileData.nrFiles() > nBefore;
+    on Exception catch(e) {
+      logDebug('Exception in loadFileData: $e');
+      return false;
+    }
   }
 
   // void loadSolutions(MattFile? file) async {
@@ -291,7 +307,7 @@ class _MrMattHomeState extends State<MrMattHome> {
             Center( child: 
               Column(                          
                 children: [const SizedBox(height:20), 
-                          MattSelectFileTile(files:fileData,fileChanged: callBackFile),
+                          MattSelectFileTile(files:gameFiles.matFileData,fileChanged: callBackFile),
                           const SizedBox(height:16),
                           Row(mainAxisAlignment: MainAxisAlignment.center,
                           children:[MattDialogButton(onPressed: () {
