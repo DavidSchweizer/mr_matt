@@ -1,9 +1,8 @@
 import "dart:collection";
-import "package:mr_matt/game/matt_sol.dart";
+import "package:mr_matt/log.dart";
 
 import "matt_grid.dart";
 import "matt_fall.dart";
-import "../log.dart";
 
 enum Move  {none, left,up,right,down}
 const Map<String,Move> moveFromCode = {'L':Move.left, 'U':Move.up, 'R': Move.right, 'D': Move.down};
@@ -21,20 +20,24 @@ class MoveRecord {
   MoveRecord({required this.move, required this.repeat, this.result});
   int get nrMoves=>repeat+1;
 }
-
+class Moves {
+  List<MoveRecord> moves = [];
+  int _nrMoves = 0;
+  void clear(){
+    moves.clear();
+    _nrMoves = 0;
+  }
+  int get nrMoves=>_nrMoves;
+  void addMove(MoveRecord move) {
+    moves.add(move);
+    _nrMoves += move.nrMoves;
+  }
+}
 class GameSnapshot {
   late Grid _previousGrid;
   Grid get previousGrid =>_previousGrid;
   late MoveRecord _moveRecord; 
   MoveRecord get moveRecord =>_moveRecord;
-  // late Move _move;
-  // Move get move =>_move;
-  // late int _repeat;
-  // int get repeat =>_repeat;
-  // late MoveResult _result;
-  // MoveResult get result =>_result;
-  // above part will be modified 
-
   late RowCol? _mrMatt;
   RowCol get mrMatt =>_mrMatt??previousGrid.findMrMatt();
   GameSnapshot(Grid previousGrid, Move move, {MoveResult? result,int? repeat, RowCol? mrMatt}) {
@@ -70,21 +73,16 @@ class MattGame {
     nrFood = grid.nrFood();    
     mrMatt=grid.findMrMatt();        
   }
-  MattLevelSolution export(String player) {
-    int nrMoves = 0;
-    List<MoveRecord> moves = [];
+  Moves getMoves() {
+    Moves moves = Moves();
     for (GameSnapshot snapshot in snapshots) {
-      nrMoves += snapshot.nrMoves;
-      moves.add(snapshot.moveRecord);
+      moves.addMove(snapshot.moveRecord);
     }
-    return MattLevelSolution(
-            level: level, nrMoves: nrMoves, 
-            player: player, game: game, moves: moves);
+    return moves;
   }
-
   MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
   GameSnapshot? get lastSnapshot => snapshots.isNotEmpty? snapshots.last:null;
-  
+
   bool _moveValid(int row,int col) {    
     if (!GridConst.isGridRowCol(row,col)) return false;      
 
@@ -233,7 +231,6 @@ class MattGame {
     logDebug('--- _performMove result is $result');
     return result;
   }
-
   bool _stuffAboveMrMattBlocksVerticalMove(Move move) {
       switch (move) {
         case Move.up: 
@@ -254,4 +251,14 @@ class MattGame {
     mrMatt = grid.findMrMatt(); 
     return lastSnapshot.nrMoves;
   }
+  MoveResult playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) {
+    MoveResult result = MoveResult.invalid;
+    for (MoveRecord move in moves.moves) {
+        result = performMove(move.move, move.repeat);
+        if (callback!=null) {callback(move, result);}
+        if (result != MoveResult.ok){break;}
+    }
+    return result;
+  }
 }
+

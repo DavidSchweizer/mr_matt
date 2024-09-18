@@ -2,12 +2,12 @@ import 'dart:io';
 import 'package:mr_matt/log.dart';
 
 abstract class MattLineFileEntry {
-  late int level;
-  late int nrMoves;
   late String player;
   late String game;
+  late int level;
+  late int nrMoves;
   late int checksum; // this is not used in this implementation
-  MattLineFileEntry({required this.level,required this.nrMoves, required this.player, required this.game, this.checksum=0}); 
+  MattLineFileEntry({required this.player, required this.game, required this.level,required this.nrMoves, this.checksum=0}); 
   String toExport();
 }
 
@@ -44,19 +44,19 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
   void parseVersionLine(String line){
     _versionLine = line.trim();    
   }
-  FT newEntry({required int level, required int nrMoves, required String player, required String game, required int checksum, required Map<String,String>otherFields});  
+  FT newEntry({required String player, required String game, required int level, required int nrMoves, required int checksum, required Map<String,String>otherFields});  
   FT parseLineEntry(String line) {
-    const Set<String> baseNames = {'level', 'nrmoves', 'player', 'game', 'checksum'};
+    const Set<String> baseNames = {'player', 'game', 'level', 'nrmoves', 'checksum'};
     Map<String,String> matchedNames = _parseLine(line);
     Map<String,String> otherFields = {};
     matchedNames.forEach((name,value) {if (!baseNames.contains(name)) {otherFields[name] = value;}});
-    return newEntry(level:int.tryParse(matchedNames['level']!)??0,
-              nrMoves: int.tryParse(matchedNames['nrmoves']!)??0,
-           player: matchedNames['player']!, 
-           game: matchedNames['game']!, 
-       checksum: int.tryParse(matchedNames['checksum']!)??0,
-       otherFields: otherFields
-              );
+    return newEntry(           
+            player: matchedNames['player']!, game: matchedNames['game']!, 
+            level:int.tryParse(matchedNames['level']!)??0,
+            nrMoves: int.tryParse(matchedNames['nrmoves']!)??0,
+            checksum: int.tryParse(matchedNames['checksum']!)??0,
+            otherFields: otherFields
+          );
   }
   Map<String,String> _parseLine(String line) {     
     RegExpMatch? match = lineRegex.firstMatch(line);
@@ -107,19 +107,19 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
     _versionLine='';
     entries.clear();
   }
-  FT? find(String game, String player, [int level = 0]) {
+  FT? find(String player, String game, [int level = 0]) {
     for (FT entry in entries) {
-      if (game==entry.game && player==entry.player && level == entry.level) {
+      if (player==entry.player && game==entry.game && level == entry.level) {
         return entry;
       }
     }
     return null;
   }
-  FT? highestLevel(String game, String player) {
-    FT? result = find(game,player);
+  FT? highestLevel(String player, String game) {
+    FT? result = find(player, game);
     if (result!=null) {
       for (FT entry in entries) {
-        if (entry != result && game==entry.game && player==entry.player && entry.level > result!.level) {result = entry;}
+        if (entry != result && player==entry.player && game==entry.game && entry.level > result!.level) {result = entry;}
       }
     }
     return result;

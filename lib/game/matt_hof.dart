@@ -2,7 +2,7 @@ import 'package:mr_matt/game/matt_line_file.dart';
 
 class MattLevelHallOfFameEntry extends MattLineFileEntry {
   int seconds;
-  MattLevelHallOfFameEntry({required this.seconds, required super.level,required super.nrMoves, required super.player, required super.game, super.checksum});  
+  MattLevelHallOfFameEntry({required this.seconds, required super.player, required super.game, required super.level,required super.nrMoves, super.checksum});  
   @override String toExport() {
     return '$level $seconds $nrMoves $game|$player|$checksum';
   }
@@ -12,13 +12,15 @@ class MattHallOfFameFile extends MattLineFile<MattLevelHallOfFameEntry>{
   static String linePattern = r"(?<level>\d+)\s(?<seconds>\d+)\s(?<nrmoves>\d+)\s(?<game>.*?)\|(?<player>.*?)\|(?<checksum>\d+)";
   MattHallOfFameFile(): super(linePattern: linePattern);
   @override
-  MattLevelHallOfFameEntry newEntry({required int level, required int nrMoves, required String player, required String game, required int checksum, required Map<String,String> otherFields}) {
-    return MattLevelHallOfFameEntry(seconds: int.tryParse(otherFields['seconds']!)??0, level: level, nrMoves: nrMoves, player: player, game: game);
+  MattLevelHallOfFameEntry newEntry({required String player, required String game, required int level, 
+                                    required int nrMoves, required int checksum, required Map<String,String> otherFields}) {
+    return MattLevelHallOfFameEntry(seconds: int.tryParse(otherFields['seconds']!)??0, 
+            player: player, game: game, level: level, nrMoves: nrMoves);
   }
-  bool update(String game, String player, int level, int seconds, int nrMoves) {
-    MattLevelHallOfFameEntry? current = find(game,player,level);
+  bool update(String player, String game, int level, int seconds, int nrMoves) {
+    MattLevelHallOfFameEntry? current = find(player,game,level);
     if (current == null) {
-      entries.add(MattLevelHallOfFameEntry(level: level, seconds: seconds, nrMoves: nrMoves, player: player, game: game));
+      entries.add(MattLevelHallOfFameEntry(player: player, game: game, level: level, seconds: seconds, nrMoves: nrMoves));
       return true;
     }
     else if (current.nrMoves > nrMoves || current.nrMoves == nrMoves && current.seconds > seconds) {
