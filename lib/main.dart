@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
@@ -55,6 +57,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattFile? newFile;
   int? currentLevel;
   String player = "Mr David #1899";
+  Moves? playbackMoves;
 
   GameFiles gameFiles = GameFiles();
   
@@ -119,6 +122,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
     Grid? grid = game?.grid;
+    if (playbackMoves != null) {scheduleMicrotask(() async {await _playback();});}      
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -170,7 +174,7 @@ class _MrMattHomeState extends State<MrMattHome> {
                   width: 10,
                 ),
             MattAppBarButton(
-                    onPressed: _playback,
+                    onPressed: () async {_setupPlayback();},
                     iconData: Icons.playlist_play),
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
@@ -336,11 +340,12 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _moveDown() {
     _gameMove(Move.down);
   }
-  Future<void> _gameMove (Move move, [int repeat = 0]) async {
-    if (game == null) {return;}    
+  Future<MoveResult> _gameMove (Move move, [int repeat = 0]) async {
+    if (game == null) {return MoveResult.invalid;}    
     if (!game!.canMove(move)) {       
       logDebug('Uh-oh: can not perform move $move');
-      return; } 
+      return MoveResult.invalid; 
+    } 
     MoveResult result = MoveResult.invalid;
     setState(() {
       result = game!.performMove(move, repeat);
@@ -352,7 +357,8 @@ class _MrMattHomeState extends State<MrMattHome> {
       case MoveResult.stuck: { _ohNo(false);}
       case MoveResult.killed: {_ohNo(true);}
     default:
-  }
+    }
+    return result;
   }
   void _tileTapped(Tile tile){
     if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
@@ -376,22 +382,29 @@ class _MrMattHomeState extends State<MrMattHome> {
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
   }
-
-  Future<void> _restartGameCheck([String? message]) async {
-    if (game==null || _counter == 0) {return;}
-    bool confirm = message != null ? await askConfirm(context, message) : true;
-    if (confirm) {setState(() {    
+  void __restart(){
+    setState(() {    
           stopwatch.reset();         
           int newLevel = currentLevel??0;
           game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
           _counter = 0;
-          stopwatch.start();
-        });
-        }
+          stopwatch.start();});
+  }
+  Future<void> _restartGameCheck([String? message]) async {
+    if (game==null || _counter == 0) {return;}
+    bool confirm = message != null ? await askConfirm(context, message) : true;
+    if (confirm) {__restart();}
+    // setState(() {    
+    //       stopwatch.reset();         
+    //       int newLevel = currentLevel??0;
+    //       game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
+    //       _counter = 0;
+    //       stopwatch.start();
+    //     });        
 
   }
   Future <void> _restartGame([bool check=true]) async {
-    return _restartGameCheck(check ? "Really start again?" : null);
+    return await _restartGameCheck(check ? "Really start again?" : null);
   }
 
   void _repeatMove(Move move) async {
@@ -425,14 +438,20 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _loader() {
     loadFile(context);
   }
-  void _playback() async {
+  Future<void> _setupPlayback() async {
     if (!_gameRunning())
     {return;}
-    Moves moves = game!.getMoves();
-    await _restartGame(false);
-    for (MoveRecord move in moves.moves) {
-      await _gameMove(move.move, move.repeat);      
-    }
+    playbackMoves = game!.getMoves();
+    setState(() {_restartGame(false);});
   }
-  
+  Future<void> _playback() async {
+    if (playbackMoves == null || playbackMoves!.moves.isEmpty) {return;}
+    Duration waitAbit = const Duration(seconds: 2);
+    // __restart();//scheduleMicrotask(() {_restartGame(false); Future.delayed(waitAbit);});
+    // Future.delayed(waitAbit);
+    MoveRecord move  = playbackMoves!.moves.removeAt(0);
+    logDebug('Move: $move');
+    MoveResult result = await _gameMove(move.move, move.repeat); await Future.delayed(waitAbit);
+    if (playbackMoves!.moves.isEmpty || result != MoveResult.ok) {playbackMoves = null;}
+  }
 }

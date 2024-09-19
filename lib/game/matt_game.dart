@@ -31,6 +31,14 @@ class Moves {
     moves.add(move);
     _nrMoves += move.nrMoves;
   }
+  @override
+  String toString(){
+    String result = "";
+    for (MoveRecord move in moves){
+      result += '[${move.move.name}${move.repeat}]';
+    }
+    return result;
+  }
 }
 class GameSnapshot {
   late Grid _previousGrid;
@@ -77,6 +85,7 @@ class MattGame {
     for (GameSnapshot snapshot in snapshots) {
       moves.addMove(snapshot.moveRecord);
     }
+    logDebug('Moves: $moves');
     return moves;
   }
   MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
