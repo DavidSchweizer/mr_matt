@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'widgets/dialogs.dart';
+import 'package:mr_matt/widgets/buttons.dart';
 import 'log.dart';
 import 'game/matt_file.dart';
 import 'game/matt_level.dart';

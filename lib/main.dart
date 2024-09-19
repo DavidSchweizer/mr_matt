@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
 import 'package:mr_matt/game/matt_hof.dart';
+import 'package:mr_matt/widgets/buttons.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
@@ -61,11 +62,9 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattHallOfFameFile solvedGameLevels = MattHallOfFameFile();
   
   bool _fileLoaded() =>selectedFile.isNotEmpty();
-  bool _filesLoaded() {
-    MattFiles? fileData = gameFiles.matFileData[matDirectory];
-    return fileData != null ? fileData.isEmpty: false;
-  }
+  bool _filesLoaded()=> gameFiles.currentMatFiles.isNotEmpty;
   bool _levelSelected() =>currentLevel!=null;
+  bool _gameRunning()=>game!=null;
 
   MattLevel? getLevel() {
     if (_fileLoaded()&&_levelSelected()){
@@ -104,7 +103,6 @@ class _MrMattHomeState extends State<MrMattHome> {
       }
     return result;
   }
-
   String _getLevelTitle() {
     if (_fileLoaded()&&_levelSelected()){
       return '${getLevel()!.title} (level ${(currentLevel??0)+1})';
@@ -144,77 +142,36 @@ class _MrMattHomeState extends State<MrMattHome> {
             ),
             
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
-            IconButton(
+            
+            MattAppBarButton(
                     onPressed: _moveLeft,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_left,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
-            IconButton(
+                    iconData: Icons.keyboard_arrow_left),
+            MattAppBarButton(
                     onPressed: _moveUp,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_up,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
-            IconButton(
+                      iconData: Icons.keyboard_arrow_up),
+            MattAppBarButton(
                     onPressed: _moveDown,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
-            IconButton(
+                    iconData: Icons.keyboard_arrow_down),
+            MattAppBarButton(
                     onPressed: _moveRight,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_right,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
+                    iconData: Icons.keyboard_arrow_right),
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),                      
-            IconButton(
+            MattAppBarButton(
                     onPressed: _restartGame,
-                    icon: const Icon(
-                      Icons.restart_alt,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
-            IconButton(
+                    iconData: Icons.restart_alt),
+            MattAppBarButton(
                     onPressed: _undoMove,
-                    icon: const Icon(
-                      Icons.undo,
-                      size: 30,
-                      color: Colors.white,
-                    )),
-                const SizedBox(
-                  width: 10,
-                ),
-            IconButton(
+                    iconData: Icons.undo),
+            MattAppBarButton(
                     onPressed: _loader,
-                    icon: const Icon(
-                      Icons.folder_open,
-                      size: 30,
-                      color: Colors.white,
-                    )),
+                    iconData: Icons.folder_open),
+            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
                   width: 10,
                 ),
+            MattAppBarButton(
+                    onPressed: _playback,
+                    iconData: Icons.playlist_play),
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
                   width: 10,
@@ -273,7 +230,11 @@ class _MrMattHomeState extends State<MrMattHome> {
           level.accessible = level.level <= maxLevel;
         }
       }
-      return gameFiles.getNrFiles() > 0;
+      if (gameFiles.getNrMattFiles() > 0) {
+        newFile ??= gameFiles.getMatFile().first;
+        return true;
+      }
+      return false;
     }
     on Exception catch(e) {
       logDebug('Exception in loadFileData: $e');
@@ -307,7 +268,7 @@ class _MrMattHomeState extends State<MrMattHome> {
             Center( child: 
               Column(                          
                 children: [const SizedBox(height:20), 
-                          MattSelectFileTile(files:gameFiles.matFileData,fileChanged: callBackFile),
+                          MattSelectFileTile(files:gameFiles.currentMatFiles,fileChanged: callBackFile),
                           const SizedBox(height:16),
                           Row(mainAxisAlignment: MainAxisAlignment.center,
                           children:[MattDialogButton(onPressed: () {
@@ -330,17 +291,17 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
 
   void loadFile(BuildContext context) async {
-    if (fileData.mattFiles.isEmpty) {
+    if (gameFiles.currentMatFiles.isEmpty) {
       await loadFileData(false);
     }
-    if (fileData.mattFiles.isEmpty) {
+    if (gameFiles.currentMatFiles.isEmpty) {
       if (context.mounted) {
         showMessageDialog(context,'No files found...'); 
       }
       return;
     }
     if (context.mounted) {
-      MattFile? newFile = await selectFileFromDialog(context, fileData, selectedFile);
+      MattFile? newFile = await selectFileFromDialog(context, gameFiles.currentMatFiles, selectedFile);
       if (newFile == null) {return;}
       startNewGame(newFile);
     }
@@ -351,8 +312,9 @@ class _MrMattHomeState extends State<MrMattHome> {
                   } );          
   }
 
-  void startNewGame(MattFile newFile) {
+  void startNewGame(MattFile? newFile) {
     int newLevel = 0;
+    if (newFile == null) {return;}
     MattGame newGame = MattGame(newFile.levels[newLevel].grid, level: newLevel, game: newFile.title);
     stopwatch.reset();
     stopwatch.start();
@@ -374,7 +336,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _moveDown() {
     _gameMove(Move.down);
   }
-  void _gameMove (Move move, [int repeat = 0]) {
+  Future<void> _gameMove (Move move, [int repeat = 0]) async {
     if (game == null) {return;}    
     if (!game!.canMove(move)) {       
       logDebug('Uh-oh: can not perform move $move');
@@ -415,7 +377,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     });
   }
 
-  void _restartGameCheck([String? message]) async {
+  Future<void> _restartGameCheck([String? message]) async {
     if (game==null || _counter == 0) {return;}
     bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {setState(() {    
@@ -428,14 +390,11 @@ class _MrMattHomeState extends State<MrMattHome> {
         }
 
   }
-  void _restartGame() async {
-    _restartGameCheck("Really start again?");
-    // MattSolutionFile testing = MattSolutionFile();
-    // await testing.parseFile('d:/mrmatt/chicago_2.sol');
-    // await testing.writeToFile('copycopy.sol');
+  Future <void> _restartGame([bool check=true]) async {
+    return _restartGameCheck(check ? "Really start again?" : null);
   }
 
-  void _repeatMove(Move move) {
+  void _repeatMove(Move move) async {
     int nrTimes = 0;
     switch (move){
       case Move.left: nrTimes = -game!.mrMatt.col;
@@ -444,7 +403,7 @@ class _MrMattHomeState extends State<MrMattHome> {
       case Move.down: nrTimes = GridConst.mattHeight-game!.mrMatt.row+1;
       default: return;
     }
-    return _gameMove(move, nrTimes.abs());
+    await _gameMove(move, nrTimes.abs());
   }
   void _ohNo(bool killed) {
     setState(() {stopwatch.stop();});
@@ -466,4 +425,14 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _loader() {
     loadFile(context);
   }
+  void _playback() async {
+    if (!_gameRunning())
+    {return;}
+    Moves moves = game!.getMoves();
+    await _restartGame(false);
+    for (MoveRecord move in moves.moves) {
+      await _gameMove(move.move, move.repeat);      
+    }
+  }
+  
 }

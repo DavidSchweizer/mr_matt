@@ -1,31 +1,5 @@
 import 'package:flutter/material.dart';
-
-class MattDialogButton extends StatefulWidget {
-  final Function()? onPressed;
-  final String label;
-  final Icon? icon;
-  const MattDialogButton({super.key,this.onPressed, required this.label, this.icon});
-
-  @override
-  State<MattDialogButton> createState() => _MattDialogButtonState();
-}
-
-class _MattDialogButtonState extends State<MattDialogButton> {
-  @override
-  Widget build(BuildContext context) {
-    return widget.icon != null ?
-          ElevatedButton.icon(
-                onPressed: widget.onPressed,
-                label: Text(widget.label),
-                icon: widget.icon,
-                )    
-          :
-          ElevatedButton(
-                onPressed: widget.onPressed,
-                child: Text(widget.label),
-                );
-  }
-}
+import 'package:mr_matt/widgets/buttons.dart';
 
 class ConfirmDialog extends StatefulWidget {
   final String question;

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:mr_matt/game/matt_grid.dart';
 import 'package:mr_matt/log.dart';
 
 abstract class MattLineFileEntry {
@@ -61,13 +62,13 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
   Map<String,String> _parseLine(String line) {     
     RegExpMatch? match = lineRegex.firstMatch(line);
     if (match == null) {
-      throw('unexpected line pattern in solution file:\n\t[$line]');
+      throw(MrMattException('unexpected line pattern in solution file:\n\t[$line]'));
     }
     Map<String,String> matchedNames = {};
     for (String name in match.groupNames) {
       String? matchedName = match.namedGroup(name);
       if (matchedName == null) {
-        throw('Missing field $name in line\n\t[$line]');
+        throw(MrMattException('Missing field $name in line\n\t[$line]'));
       }
       matchedNames[name]= matchedName;
     }

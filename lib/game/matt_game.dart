@@ -12,7 +12,6 @@ const Map<Move,String> moveToCode   = {Move.left: 'L', Move.up:'U', Move.right:'
 bool isHorizontalMove(Move move)=>move==Move.left || move==Move.right;
 bool isVerticalMove(Move move)=>move==Move.up || move==Move.down;
 enum MoveResult {invalid,ok,stuck,killed,finish,} // move is invalid, move OK, MrMatt can't move any more, MrMatt was killed, last apple eaten (Win!)
-
 class MoveRecord {
   late Move move;
   late int repeat;
@@ -121,7 +120,7 @@ class MattGame {
     if (target.isMrMatt()) 
     {
       logDebug('---mrMatt');    
-      throw(StateError('Multiple MrMatt'));
+      throw(MrMattException('Multiple MrMatt'));
     }
     else if (target.isWall()) {
       logDebug('WALL');
@@ -141,7 +140,7 @@ class MattGame {
       }
       else {return false;}
     }
-    throw (StateError('Unexpected target tile type $target'));
+    throw (MrMattException('Unexpected target tile type $target'));
   }
   RowCol _rolColFromMove(Move move){ 
     switch (move) {
@@ -189,7 +188,7 @@ class MattGame {
       if (result == MoveResult.ok)
         {repeated += 1;}
     } while (repeated < repeat && result == MoveResult.ok && canMove(move));
-    if (isStuck())
+    if (result != MoveResult.killed && isStuck())
       { 
         mrMatt = grid.findMrMatt();
         grid.cell(mrMatt.row,mrMatt.col).setLoser();

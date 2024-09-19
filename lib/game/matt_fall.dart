@@ -11,11 +11,15 @@ class FallHandler {
   MoveResult handleAll(int row, int col) {
     MoveResult result = MoveResult.ok;
     // bool first = true;
+    
     logDebug('Dropping ALL [$row,$col] ${grid.cell(row,col)}');
-    while (result != MoveResult.killed && result != MoveResult.finish && 
+    while (//result != MoveResult.killed && result != MoveResult.finish && 
           GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) { 
-      result = handle(row,col);
-      logDebug('\tdropped one [$row,$col] ${grid.cell(row,col)}: $result.');
+      MoveResult temResult = handle(row,col);
+      logDebug('\tdropped one [$row,$col] ${grid.cell(row,col)}: $temResult.');
+      if (result == MoveResult.ok && temResult != MoveResult.ok) {
+        result = temResult;
+      }
       // if (result == MoveResult.ok && (!first && GridConst.isTop(row))) {break;}
       // first = false;
       // if (GridConst.isTop(row)) {break;} else {row -=1;}
@@ -94,7 +98,7 @@ class FallHandler {
         {return MoveResult.ok;}
     }
     else       
-      {throw('Unexpected situation for [$row,$col]. Sorry. tile: $tile below $below.');}
+      {throw(MrMattException('Unexpected situation for [$row,$col]. Sorry. tile: $tile below $below.'));}
   }
   
   bool _emptyBelow(int row, int col, Tile tile, Tile below)=>_testBelow(row, col, tile, below, below.isEmpty, 'empty');

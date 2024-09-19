@@ -20,14 +20,15 @@ class GameFiles{
     currentMatDirectory = directory;
     return true;
   }
-  MattFiles _getMattFiles() => matFileData[currentMatDirectory]?? MattFiles();
+  MattFiles _currentMattFiles() => matFileData[currentMatDirectory]?? MattFiles();
+  MattFiles get currentMatFiles=>_currentMattFiles();
 
-  int getNrFiles() {
-    MattFiles files = _getMattFiles();
+  int getNrMattFiles() {
+    MattFiles files = _currentMattFiles();
     return files.nrFiles;
   }
   Iterable<MattFile> getMatFile() sync* {
-    MattFiles files = _getMattFiles();
+    MattFiles files = _currentMattFiles();
     for (MattFile file in files.mattFiles) {yield file;}
   }
 

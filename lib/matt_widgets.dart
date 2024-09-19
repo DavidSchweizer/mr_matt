@@ -82,6 +82,7 @@ class MattGridState extends State<MattGridWidget> {
   }
 
 }
+
 class MattGameLevelWidget extends StatefulWidget{
   final MattAssets assets;
   final MattFile? file;
@@ -103,7 +104,7 @@ class MattFileState extends State<MattGameLevelWidget>  {
     if (_fileLoaded()) {
       return _buildLoaded(context);
     }
-    throw('unexpected: no file loaded.');
+    throw(MrMattException('unexpected: no file loaded.'));
   }
   Widget _buildLoaded(BuildContext context) {
     assert (_fileLoaded() && _levelSelected());

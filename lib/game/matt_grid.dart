@@ -3,6 +3,11 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+class MrMattException implements Exception {
+  final String cause;
+  MrMattException(this.cause);
+}
+
 class RowCol {
   late int row;
   late int col;
@@ -48,7 +53,7 @@ class Tile {
       case '#': tt = TileType.wall;
       case 'H': tt = TileType.mrMatt;
       case ' ': tt = TileType.empty;
-      default: throw(ArgumentError('unknown character [$char] in line, cannot be parsed.'));
+      default: throw(MrMattException('unknown character [$char] in line, cannot be parsed.'));
     }
     tileType = tt;
   }
@@ -95,7 +100,7 @@ class Tile {
     if (value == 1) {tileType=TileType.box1;}
     else if (value == 2) {tileType=TileType.box2;}
     else if (value == 3) {tileType=TileType.box3;}
-    else {throw(ArgumentError('Invalid argument for setBox: $value'));}
+    else {throw(MrMattException('Invalid argument for setBox: $value'));}
   }
   void setGrass()=>tileType=TileType.grass;
   void setFood()=>tileType=TileType.food;
@@ -106,7 +111,7 @@ class Tile {
     if (tileType == TileType.box3) {newType=TileType.box2;}
     else if (tileType == TileType.box2) {newType=TileType.box1;}
     else if (tileType == TileType.box1) {newType=TileType.empty;}
-    else {throw(ArgumentError('Unexpected tiletype "$tile"'));}
+    else {throw(MrMattException('Unexpected tiletype "$tile"'));}
     return Tile(newType,tile.row,tile.col);  
   }
 }
@@ -155,7 +160,7 @@ class GridColumn {
   }
   void _checkRow(int row){ 
     if (!GridConst.isGridRow(row)) {
-      throw(ArgumentError('Invalid row: $row'));
+      throw(MrMattException('Invalid row: $row'));
     }
   }
   Tile cell(int row) {
@@ -188,7 +193,7 @@ class Grid {
   }
   void _checkCol(int col){ 
     if (!GridConst.isGridCol(col)) {
-      throw(ArgumentError('Invalid column: $col'));
+      throw(MrMattException('Invalid column: $col'));
     }
   }
   Tile cell(int row, int col) {
@@ -232,7 +237,7 @@ class Grid {
         }
       }
     }
-    throw(StateError('MrMatt not found...'));
+    throw(MrMattException('MrMatt not found...'));
   }
   void dump() {
     if (kDebugMode) {
