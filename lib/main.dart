@@ -4,7 +4,6 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
-import 'package:mr_matt/game/matt_hof.dart';
 import 'package:mr_matt/widgets/buttons.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
@@ -58,11 +57,9 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattFile? newFile;
   int? currentLevel;
   String player = "Mr David #1899";
-  // Moves? playbackMoves;
-
+  
   final Duration timerDelay = const Duration(milliseconds:100);
   Queue<Move> movesQueue = Queue<Move>();
-  // bool playBacking = false;
   Timer? playBackTimer;
 
   void _pushMove(Move move) => movesQueue.addLast(move);
@@ -71,33 +68,12 @@ class _MrMattHomeState extends State<MrMattHome> {
       _pushMove(moveRecord.move);}
   }
   Move _popMove() => movesQueue.removeFirst();
-
   Future<MoveResult> playBackOne() async {
     MoveResult result = await _gameMove(_popMove());
     return result;
   }
-  // Future<MoveResult> playBackQueue() async {
-  //   // if (playBacking) {
-  //   //   throw MrMattException('call to playBackQueue while in playback mode');
-  //   // }
-  //   bool oldPlayBacking = playBacking;
-  //   try {
-  //     playBacking = true;
-  //     MoveResult result = MoveResult.ok; 
-  //     while (movesQueue.isNotEmpty && result == MoveResult.ok) {
-  //       result = await playBackOne();
-  //     }
-  //     return result;
-  //   }
-  //   finally {
-  //     playBacking = oldPlayBacking;
-  //   }
-  // }
-
-  GameFiles gameFiles = GameFiles();
   
-  // MattSolutionFile solutions = MattSolutionFile();
-  MattHallOfFameFile solvedGameLevels = MattHallOfFameFile();
+  GameFiles gameFiles = GameFiles();
   
   bool _fileLoaded() =>selectedFile.isNotEmpty();
   bool _filesLoaded()=> gameFiles.currentMatFiles.isNotEmpty;
@@ -153,12 +129,17 @@ class _MrMattHomeState extends State<MrMattHome> {
     }
     else { return "no file loaded: Load a file first!";}
   }
+
+  @override 
+  void initState() {
+    super.initState();
+    playBackTimer = Timer.periodic(timerDelay, 
+                              (timer) {if (movesQueue.isNotEmpty) {_playback(timer);}});
+  }
   @override
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
     Grid? grid = game?.grid;
-    playBackTimer ??= Timer.periodic(timerDelay, 
-                              (timer) {if (movesQueue.isNotEmpty) {_playback(timer);}});
     // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}      
     return Scaffold(
         appBar: AppBar(
@@ -254,18 +235,12 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
 
   Future <bool> loadFileData(bool first) async {
-    // if (first) 
-    //   {await gameFiles.loadHallOfFameFile();}
     try {
       bool result = await gameFiles.loadMatFileData(matDirectory);
-      if (!result) {return false; }
-      // MattFile?  newFile = gameFiles.getMatFile().first;
-        
+      if (!result) {return false; }       
       logDebug('resultaat loadFileData: ');
       for (MattFile entry in gameFiles.getMatFile()) {       
         logDebug('file: $entry');
-        // MattLevelHallOfFameEntry? maxLevelEntry = solvedGameLevels.highestLevel(entry.title, player);
-        // int maxLevel = maxLevelEntry != null ? maxLevelEntry.level : 1;
         int maxLevel = 1;
         for (MattLevel level in entry.levels) {
           level.accessible = level.level <= maxLevel;
@@ -281,18 +256,6 @@ class _MrMattHomeState extends State<MrMattHome> {
       logDebug('Exception in loadFileData: $e');
       return false;
     }
-  }
-
-  // void loadSolutions(MattFile? file) async {
-  //   solutions.clear();
-  //   if (file == null) {return;}
-  //   String filename = file.filename;
-  //   solutions.parseFile(pathWithExtension(filename,'.sol'));
-  // }
-
-  Future loadHallOfFame() async {
-    solvedGameLevels.clear();
-    solvedGameLevels.parseFile(p.join('.', 'sol', 'mrmatt.hof'));
   }
 
   void callBackFile(MattFile? file) {
@@ -348,11 +311,8 @@ class _MrMattHomeState extends State<MrMattHome> {
     }
   }
   void _selectLevel(int level) {
-    // setState( () {currentLevel = level;
-    //               _restartGameCheck('Abandon current level?');
-    //               } );          
     _restartGameCheck(level != currentLevel ? 'Abandon current level?':null);
-    currentLevel = level;
+    setState(() {currentLevel = level;});
   }
 
   void startNewGame(MattFile? newFile) {
@@ -434,14 +394,6 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (game==null /*|| _counter == 0*/) {return;}
     bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {__restart();}
-    // setState(() {    
-    //       stopwatch.reset();         
-    //       int newLevel = currentLevel??0;
-    //       game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
-    //       _counter = 0;
-    //       stopwatch.start();
-    //     });        
-
   }
   Future <void> _restartGame([bool check=true]) async {
     return await _restartGameCheck(check ? "Really start again?" : null);
@@ -494,15 +446,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   void _playback(Timer timer) async {
     logDebug('---- Playback...');
-    MoveResult result = await playBackOne(); //playBackQueue();
+    MoveResult result = await playBackOne(); 
     logDebug('---- END Playback... $result');
-    // if (playbackMoves == null || playbackMoves!.moves.isEmpty) {return;}
-    // Duration waitAbit = const Duration(seconds: 2);
-    // // __restart();//scheduleMicrotask(() {_restartGame(false); Future.delayed(waitAbit);});
-    // // Future.delayed(waitAbit);
-    // MoveRecord move  = playbackMoves!.moves.removeAt(0);
-    // logDebug('Move: $move');
-    // MoveResult result = await _gameMove(move.move, move.repeat); await Future.delayed(waitAbit);
-    // if (playbackMoves!.moves.isEmpty || result != MoveResult.ok) {playbackMoves = null;}
   }
 }
