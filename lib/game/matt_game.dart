@@ -91,6 +91,10 @@ class MattGame {
   MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
   GameSnapshot? get lastSnapshot => snapshots.isNotEmpty? snapshots.last:null;
 
+  void takeSnapshot(Grid current, Move move, MoveResult result, int repeat, RowCol mrMatt) {
+    snapshots.addLast(GameSnapshot(current, move, result: result, repeat: repeat, mrMatt: mrMatt));  
+  }
+
   bool _moveValid(int row,int col) {    
     if (!GridConst.isGridRowCol(row,col)) return false;      
 
@@ -198,12 +202,12 @@ class MattGame {
         {repeated += 1;}
     } while (repeated < repeat && result == MoveResult.ok && canMove(move));
     if (result != MoveResult.killed && isStuck())
-      { 
-        mrMatt = grid.findMrMatt();
-        grid.cell(mrMatt.row,mrMatt.col).setLoser();
-        result = MoveResult.stuck;
-      }
-    snapshots.addLast(GameSnapshot(current, move, result: result, repeat: repeated-1, mrMatt: mrMatt));  
+    { 
+      mrMatt = grid.findMrMatt();
+      grid.cell(mrMatt.row,mrMatt.col).setLoser();
+      result = MoveResult.stuck;
+    }
+    takeSnapshot(current, move, result, repeated-1, mrMatt);
     logDebug('performMove ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }

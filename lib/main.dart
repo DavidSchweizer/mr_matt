@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,7 +58,41 @@ class _MrMattHomeState extends State<MrMattHome> {
   MattFile? newFile;
   int? currentLevel;
   String player = "Mr David #1899";
-  Moves? playbackMoves;
+  // Moves? playbackMoves;
+
+  final Duration timerDelay = const Duration(milliseconds:100);
+  Queue<Move> movesQueue = Queue<Move>();
+  // bool playBacking = false;
+  Timer? playBackTimer;
+
+  void _pushMove(Move move) => movesQueue.addLast(move);
+  void _pushMoveRecord(MoveRecord moveRecord) {
+    for (int i = moveRecord.repeat; i>=0;i--) {
+      _pushMove(moveRecord.move);}
+  }
+  Move _popMove() => movesQueue.removeFirst();
+
+  Future<MoveResult> playBackOne() async {
+    MoveResult result = await _gameMove(_popMove());
+    return result;
+  }
+  // Future<MoveResult> playBackQueue() async {
+  //   // if (playBacking) {
+  //   //   throw MrMattException('call to playBackQueue while in playback mode');
+  //   // }
+  //   bool oldPlayBacking = playBacking;
+  //   try {
+  //     playBacking = true;
+  //     MoveResult result = MoveResult.ok; 
+  //     while (movesQueue.isNotEmpty && result == MoveResult.ok) {
+  //       result = await playBackOne();
+  //     }
+  //     return result;
+  //   }
+  //   finally {
+  //     playBacking = oldPlayBacking;
+  //   }
+  // }
 
   GameFiles gameFiles = GameFiles();
   
@@ -88,11 +123,11 @@ class _MrMattHomeState extends State<MrMattHome> {
     else {lastKeyDown = null;}
     KeyEventResult result = KeyEventResult.handled;
     switch (keyEvent.logicalKey){
-      case LogicalKeyboardKey.arrowLeft: _gameMove(Move.left);
-      case LogicalKeyboardKey.arrowRight: _gameMove(Move.right);
-      case LogicalKeyboardKey.arrowUp: _gameMove(Move.up);
-      case LogicalKeyboardKey.arrowDown: _gameMove(Move.down);
-      case LogicalKeyboardKey.keyA: _gameMove(Move.left);
+      case LogicalKeyboardKey.arrowLeft: _pushMove(Move.left);
+      case LogicalKeyboardKey.arrowRight: _pushMove(Move.right);
+      case LogicalKeyboardKey.arrowUp: _pushMove(Move.up);
+      case LogicalKeyboardKey.arrowDown: _pushMove(Move.down);
+      case LogicalKeyboardKey.keyA: _pushMove(Move.left);
       case LogicalKeyboardKey.home: _repeatMove(Move.left);
       case LogicalKeyboardKey.end: _repeatMove(Move.right);
       case LogicalKeyboardKey.pageUp: _repeatMove(Move.up);
@@ -122,7 +157,9 @@ class _MrMattHomeState extends State<MrMattHome> {
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
     Grid? grid = game?.grid;
-    if (playbackMoves != null) {scheduleMicrotask(() async {await _playback();});}      
+    playBackTimer ??= Timer.periodic(timerDelay, 
+                              (timer) {if (movesQueue.isNotEmpty) {_playback(timer);}});
+    // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}      
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -311,9 +348,11 @@ class _MrMattHomeState extends State<MrMattHome> {
     }
   }
   void _selectLevel(int level) {
-    setState( () {currentLevel = level;
-                  _restartGameCheck('Abandon current level?');
-                  } );          
+    // setState( () {currentLevel = level;
+    //               _restartGameCheck('Abandon current level?');
+    //               } );          
+    _restartGameCheck(level != currentLevel ? 'Abandon current level?':null);
+    currentLevel = level;
   }
 
   void startNewGame(MattFile? newFile) {
@@ -368,11 +407,11 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     if (tile.row == game!.mrMatt.row) {
       int delta = tile.col - game!.mrMatt.col;
-      _gameMove(delta > 0 ? Move.right: Move.left, delta.abs()-1);
+      _repeatMove(delta > 0 ? Move.right: Move.left, repeat: delta.abs()-1);
     }
     else if (tile.col == game!.mrMatt.col) {
       int delta = tile.row - game!.mrMatt.row;
-      _gameMove(delta > 0 ? Move.down: Move.up, delta.abs()-1);
+      _repeatMove(delta > 0 ? Move.down: Move.up, repeat: delta.abs()-1);
     }
   }
   void _undoMove(){
@@ -383,6 +422,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     });
   }
   void __restart(){
+    _haltGame();
     setState(() {    
           stopwatch.reset();         
           int newLevel = currentLevel??0;
@@ -391,7 +431,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
-    if (game==null || _counter == 0) {return;}
+    if (game==null /*|| _counter == 0*/) {return;}
     bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {__restart();}
     // setState(() {    
@@ -406,52 +446,63 @@ class _MrMattHomeState extends State<MrMattHome> {
   Future <void> _restartGame([bool check=true]) async {
     return await _restartGameCheck(check ? "Really start again?" : null);
   }
-
-  void _repeatMove(Move move) async {
+  void _repeatMove(Move move, { int? repeat}) async {
     int nrTimes = 0;
-    switch (move){
-      case Move.left: nrTimes = -game!.mrMatt.col;
-      case Move.right: nrTimes = GridConst.mattWidth-game!.mrMatt.col+1;
-      case Move.up: nrTimes = -game!.mrMatt.row;
-      case Move.down: nrTimes = GridConst.mattHeight-game!.mrMatt.row+1;
+    switch (move) {
+      case Move.left: nrTimes = repeat ?? -game!.mrMatt.col;
+      case Move.right: nrTimes = repeat ?? GridConst.mattWidth-game!.mrMatt.col+1;
+      case Move.up: nrTimes = repeat ??-game!.mrMatt.row;
+      case Move.down: nrTimes = repeat ?? GridConst.mattHeight-game!.mrMatt.row+1;
       default: return;
     }
-    await _gameMove(move, nrTimes.abs());
+    _pushMoveRecord(MoveRecord(move:move, repeat:nrTimes.abs()));
+  }
+  void _haltGame(){
+    setState(() {stopwatch.stop();movesQueue.clear();});
   }
   void _ohNo(bool killed) {
-    setState(() {stopwatch.stop();});
+    _haltGame();
     showMessageDialog(context, killed? 
             "Oh no, you've killed Mr. Matt..." :
             "Oh no, Mr. Matt can not move any more. You lost!");
   }
   void _winner() async {
-    setState(() {stopwatch.stop();});
+    _haltGame();
     String format = stopwatch.hours > 0 ? 'hh:mm:ss':'mm:ss';    
     bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
     showMessageDialog(
       context, 'You have completed ${gameSolved? "the whole game" : "this level"} in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
-    if (!gameSolved) {
+    if (gameSolved) {
       selectedFile.levels[currentLevel!+1].accessible = true;
       setState(() { _selectLevel(currentLevel!+1);});
     }
   }
   void _loader() {
+    _haltGame();
     loadFile(context);
   }
   Future<void> _setupPlayback() async {
+    logDebug('START setupPlayback');
     if (!_gameRunning())
     {return;}
-    playbackMoves = game!.getMoves();
+    movesQueue.clear();
+    for (MoveRecord moveRecord in game!.getMoves().moves) {
+      _pushMoveRecord(moveRecord);
+    }    
     setState(() {_restartGame(false);});
+    logDebug('END setupPlayback');
   }
-  Future<void> _playback() async {
-    if (playbackMoves == null || playbackMoves!.moves.isEmpty) {return;}
-    Duration waitAbit = const Duration(seconds: 2);
-    // __restart();//scheduleMicrotask(() {_restartGame(false); Future.delayed(waitAbit);});
-    // Future.delayed(waitAbit);
-    MoveRecord move  = playbackMoves!.moves.removeAt(0);
-    logDebug('Move: $move');
-    MoveResult result = await _gameMove(move.move, move.repeat); await Future.delayed(waitAbit);
-    if (playbackMoves!.moves.isEmpty || result != MoveResult.ok) {playbackMoves = null;}
+  void _playback(Timer timer) async {
+    logDebug('---- Playback...');
+    MoveResult result = await playBackOne(); //playBackQueue();
+    logDebug('---- END Playback... $result');
+    // if (playbackMoves == null || playbackMoves!.moves.isEmpty) {return;}
+    // Duration waitAbit = const Duration(seconds: 2);
+    // // __restart();//scheduleMicrotask(() {_restartGame(false); Future.delayed(waitAbit);});
+    // // Future.delayed(waitAbit);
+    // MoveRecord move  = playbackMoves!.moves.removeAt(0);
+    // logDebug('Move: $move');
+    // MoveResult result = await _gameMove(move.move, move.repeat); await Future.delayed(waitAbit);
+    // if (playbackMoves!.moves.isEmpty || result != MoveResult.ok) {playbackMoves = null;}
   }
 }
