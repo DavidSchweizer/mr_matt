@@ -195,20 +195,20 @@ class MattGame {
     MoveResult result;
     RowCol mrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
     Grid current = Grid.copy(grid);
-    int repeated = 0;
+    int performed = 0;
     do {
       result = _performMove(move, handler);
-      if (result == MoveResult.ok)
-        {repeated += 1;}
-    } while (repeated < repeat && result == MoveResult.ok && canMove(move));
-    if (result != MoveResult.killed && isStuck())
+      if (result != MoveResult.invalid)
+        {performed += 1;}
+    } while (performed < repeat && result == MoveResult.ok && canMove(move));
+    if (result != MoveResult.finish && result != MoveResult.killed && isStuck())
     { 
       mrMatt = grid.findMrMatt();
       grid.cell(mrMatt.row,mrMatt.col).setLoser();
       result = MoveResult.stuck;
     }
-    takeSnapshot(current, move, result, repeated-1, mrMatt);
-    logDebug('performMove ($result): repeat = ${lastMove!.repeat}');
+    takeSnapshot(current, move, result, performed-1, mrMatt);
+    logDebug('SNAPSHOT: performMove ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
@@ -231,14 +231,14 @@ class MattGame {
       if (result != MoveResult.ok) {return result;}
     }    
     moveMrMatt(target.row, target.col);
-    if (nrFood == 0) {
-      logDebug('FINISHED!');
-      result = MoveResult.finish;
-    }
-    else if (!GridConst.isTop(currentRow) && isHorizontalMove(move)) {
+    if (!GridConst.isTop(currentRow) && isHorizontalMove(move)) {
       logDebug('dropping [${currentRow-1},$currentCol]');
       result = handler.handleAll(currentRow-1, currentCol);
       logDebug('--- dropping result is $result');
+    }
+    if (nrFood == 0) {
+      logDebug('FINISHED!');
+      result = MoveResult.finish;
     }
     logDebug('--- _performMove result is $result');
     return result;

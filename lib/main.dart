@@ -351,6 +351,7 @@ class _MrMattHomeState extends State<MrMattHome> {
       GameSnapshot? lastSnapshot = game!.lastSnapshot;
       _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
     });
+    await Future.delayed(Durations.medium2);
     switch  (result) {
       case MoveResult.finish: { _winner();}
       case MoveResult.stuck: { _ohNo(false);}
@@ -388,6 +389,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           int newLevel = currentLevel??0;
           game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
           _counter = 0;
+          movesQueue.clear();
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
@@ -437,11 +439,12 @@ class _MrMattHomeState extends State<MrMattHome> {
     logDebug('START setupPlayback');
     if (!_gameRunning())
     {return;}
+    Moves moves = game!.getMoves();
+    setState(() {_restartGame(false);});
     movesQueue.clear();
-    for (MoveRecord moveRecord in game!.getMoves().moves) {
+    for (MoveRecord moveRecord in moves.moves) {
       _pushMoveRecord(moveRecord);
     }    
-    setState(() {_restartGame(false);});
     logDebug('END setupPlayback');
   }
   void _playback(Timer timer) async {
