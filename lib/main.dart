@@ -470,18 +470,23 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _saveGame() async {
     await gameFiles.saveGameFile(player, game!, currentLevel!, 'mr_matt.sav');
   }
-  Future<void> _setupLoad() async {
-    if (! await gameFiles.loadSolutionFile('mr_matt.sav')) {
-        return;
+  Future<MattLevelMoves?> _loadSaveData() async {
+    MattLevelMoves? result;
+    if (await gameFiles.loadSolutionFile('mr_matt.sav')){
+      MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
+      if (saveGameFile != null) {
+        result = saveGameFile.find(player, game!.game,currentLevel!);
+      }
     }
-    MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
-    if (saveGameFile == null) {return;}
-    MattLevelMoves? moves = saveGameFile.find(player, game!.game,currentLevel!);
-    if (moves == null) {return;} 
-    setState(() {_restartGame(false);});
-    _playback(moves.moves);
+    return result;
   }
-   
+  Future<void> _setupLoad() async {
+    MattLevelMoves? moves = await _loadSaveData();
+    if (moves != null) {
+      setState(() {_restartGame(false);});
+      _playback(moves.moves);
+    }
+  }  
   void _loadGame() async {
     await _setupLoad();
     logDebug('loading');
