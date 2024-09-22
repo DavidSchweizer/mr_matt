@@ -3,15 +3,35 @@ import 'matt_game.dart';
 
 class MattLevelMoves extends MattLineFileEntry{
   late Moves moves;
-  MattLevelMoves({required Moves moves, 
+  MattLevelMoves({required this.moves,
                 required super.player, required super.game, required super.level,
                 super.checksum}): super(nrMoves: moves.nrMoves);
+  String _moveExport(Move move, int repeat) {
+    return '${repeat>0?repeat.toString():""}${moveToCode[move]}';
+  }
+
   @override
   String toExport() {
-    String firstPart = '${level}X $nrMoves $player|$game|';
+    String firstPart = '${level+1}X $nrMoves $player|$game|';
     String movesPart = '';
+    Move current = Move.none; 
+    int repeat = 0;
     for (MoveRecord move in moves.moves){
-      movesPart += '${move.repeat>0?move.repeat.toString():""}${moveToCode[move.move]}';
+      if (current == Move.none) {
+        current = move.move;
+        repeat = move.repeat;
+      }
+      else if (move.move == current) {
+        repeat += move.repeat+1;
+      }
+      else {
+        movesPart += _moveExport(current, repeat);
+        current = move.move;
+        repeat = move.repeat;
+      }     
+    }
+    if (current!= Move.none) {
+      movesPart += _moveExport(current, repeat);
     }
     return '$firstPart$movesPart $checksum';
   }
@@ -26,7 +46,7 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
   @override
   MattLevelMoves newEntry({required String player, required String game, required int level, required int nrMoves, required int checksum, required Map<String,String> otherFields}) {
     return MattLevelMoves(moves: _parseMoves(otherFields['moves']!), 
-                          player: player, game: game, level: level, checksum: checksum); 
+                          player: player, game: game, level: level-1, checksum: checksum); 
   }
   Moves _parseMoves(String moves) {
     Moves result = Moves();

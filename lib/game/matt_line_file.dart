@@ -15,9 +15,8 @@ abstract class MattLineFileEntry {
 abstract class MattLineFile<FT extends MattLineFileEntry> {
   String _filename="";
   String get filename=>_filename;
-  String _versionLine="";
+  String versionLine="";
   late RegExp lineRegex;
-  String get versionLine=>_versionLine;
   final List<FT> entries=[];
   MattLineFileEntry? lastEntry;
   MattLineFile({required String linePattern}) {
@@ -43,7 +42,7 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
     return result;
   }
   void parseVersionLine(String line){
-    _versionLine = line.trim();    
+    versionLine = line.trim();    
   }
   FT newEntry({required String player, required String game, required int level, required int nrMoves, required int checksum, required Map<String,String>otherFields});  
   FT parseLineEntry(String line) {
@@ -105,7 +104,7 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
   }
   void clear() {
     _filename='';
-    _versionLine='';
+    versionLine='';
     entries.clear();
   }
   FT? find(String player, String game, [int level = 0]) {

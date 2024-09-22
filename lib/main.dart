@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
+import 'package:mr_matt/game/matt_sol.dart';
 import 'package:mr_matt/widgets/buttons.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
@@ -134,7 +135,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   void initState() {
     super.initState();
     playBackTimer = Timer.periodic(timerDelay, 
-                              (timer) {if (movesQueue.isNotEmpty) {_playback(timer);}});
+                              (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
   }
   @override
   Widget build(BuildContext context) {
@@ -191,6 +192,16 @@ class _MrMattHomeState extends State<MrMattHome> {
                 const SizedBox(
                   width: 10,
                 ),
+            MattAppBarButton(
+                    onPressed: () async {_saveGame();},
+                    iconData: Icons.download),
+            MattAppBarButton(
+                    onPressed: () async {_loadGame();},
+                    iconData: Icons.upload),
+            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+                const SizedBox(
+                  width: 10,
+                ),                
             MattAppBarButton(
                     onPressed: () async {_setupPlayback();},
                     iconData: Icons.playlist_play),
@@ -435,21 +446,45 @@ class _MrMattHomeState extends State<MrMattHome> {
     _haltGame();
     loadFile(context);
   }
-  Future<void> _setupPlayback() async {
-    logDebug('START setupPlayback');
-    if (!_gameRunning())
-    {return;}
-    Moves moves = game!.getMoves();
-    setState(() {_restartGame(false);});
+  Future<void> _playback(Moves moves) async {
     movesQueue.clear();
     for (MoveRecord moveRecord in moves.moves) {
       _pushMoveRecord(moveRecord);
     }    
     logDebug('END setupPlayback');
   }
-  void _playback(Timer timer) async {
-    logDebug('---- Playback...');
+  Future<void> _setupPlayback() async {
+    logDebug('START setupPlayback');
+    if (!_gameRunning())
+    {return;}
+    setState(() {_restartGame(false);});
+    _playback(game!.getMoves());
+    logDebug('END setupPlayback');
+  }
+
+  void _playbackCheck(Timer timer) async {
+    logDebug('---- Playback?...');
     MoveResult result = await playBackOne(); 
     logDebug('---- END Playback... $result');
   }
+  void _saveGame() async {
+    await gameFiles.saveGameFile(player, game!, currentLevel!, 'mr_matt.sav');
+  }
+  Future<void> _setupLoad() async {
+    if (! await gameFiles.loadSolutionFile('mr_matt.sav')) {
+        return;
+    }
+    MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
+    if (saveGameFile == null) {return;}
+    MattLevelMoves? moves = saveGameFile.find(player, game!.game,currentLevel!);
+    if (moves == null) {return;} 
+    setState(() {_restartGame(false);});
+    _playback(moves.moves);
+  }
+   
+  void _loadGame() async {
+    await _setupLoad();
+    logDebug('loading');
+  }
 }
+

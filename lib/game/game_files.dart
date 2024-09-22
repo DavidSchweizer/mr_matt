@@ -1,4 +1,5 @@
 import 'package:mr_matt/game/matt_file.dart';
+import 'package:mr_matt/game/matt_game.dart';
 import 'package:mr_matt/game/matt_hof.dart';
 import 'package:mr_matt/game/matt_sol.dart';
 import 'package:path/path.dart' as p;
@@ -8,6 +9,7 @@ class GameFiles{
   Map<String,MattSolutionFile> solutions = {};
   Map<String,MattHallOfFameFile> hallOfFames = {};
   String currentMatDirectory = "";
+  String versionLine = 'Version 3.6 #1899 (temporary)'; 
   Future<bool> loadMatFileData(String directory) async {
     directory = p.canonicalize(directory);
     if (matFileData[directory] != null) {// already loaded 
@@ -38,12 +40,20 @@ class GameFiles{
     directory = p.canonicalize(directory);
     return p.join(directory, gameName, solExtension);
   }
-  Future<bool> loadSolutionFile(String directory, String gameFileName) async {
+  Future<bool> _loadSolutionFile(String directory, String gameFileName) async {
+    return await loadSolutionFile(_solutionFileName(directory, gameFileName));
+  }
+  Future<bool> loadSolutionFile(String fileName) async {
     MattSolutionFile newSolution = MattSolutionFile();
-    String solFileName = _solutionFileName(directory, gameFileName);
-    bool result = await newSolution.parseFile(solFileName);
-    if (result) {solutions[solFileName] = newSolution;}
+    bool result = await newSolution.parseFile(fileName);
+    if (result) {solutions[fileName] = newSolution;}
     return result;
+  }
+  Future<bool>saveGameFile(String player, MattGame game, int level, String gameFileName) {
+    MattSolutionFile saveGame = MattSolutionFile(complete: game.nrFood==0);
+    saveGame.versionLine = versionLine;
+    saveGame.update(player, game.game, level, game.getMoves());
+    return saveGame.writeToFile(gameFileName);    
   }
 
   Future<bool> loadHallOfFameFile(String directory) async {
