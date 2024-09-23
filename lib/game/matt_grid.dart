@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
@@ -105,14 +106,14 @@ class Tile {
   void setGrass()=>tileType=TileType.grass;
   void setFood()=>tileType=TileType.food;
   void setLoser()=>tileType=TileType.loser;
-  Tile boxConsume(Tile tile) {
+  TileType boxConsume(Tile tile) {
     assert (isBox());
     TileType newType;
     if (tileType == TileType.box3) {newType=TileType.box2;}
     else if (tileType == TileType.box2) {newType=TileType.box1;}
     else if (tileType == TileType.box1) {newType=TileType.empty;}
     else {throw(MrMattException('Unexpected tiletype "$tile"'));}
-    return Tile(newType,tile.row,tile.col);  
+    return newType;  
   }
 }
 
@@ -238,6 +239,9 @@ class Grid {
       }
     }
     throw(MrMattException('MrMatt not found...'));
+  }  
+  void playMutation(Mutation? mutation) {
+    if (mutation != null) {setCell(mutation.row,mutation.col,Tile(mutation.tileType));}
   }
   void dump() {
     if (kDebugMode) {
@@ -259,6 +263,26 @@ class Grid {
     }
   }
 }
+
+class Mutation {
+  final int row;
+  final int col;
+  final TileType tileType;
+  Mutation({required this.row, required this.col, required this.tileType});
+}
+
+class Mutations {
+  bool get isEmpty =>_mutations.isEmpty;
+  bool get isNotEmpty =>_mutations.isNotEmpty;
+  int get length =>_mutations.length;
+  final Queue<Mutation> _mutations = Queue<Mutation>();
+  void push(int row, int col, TileType tileType) {
+    _mutations.addLast(Mutation(row:row,col:col,tileType: tileType));
+  }
+  Mutation? pop() =>_mutations.isNotEmpty?_mutations.removeFirst(): null;
+  void clear() =>_mutations.clear();
+}
+
 
 int random(int start, int end) {
   final random = Random();

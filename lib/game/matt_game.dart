@@ -75,6 +75,7 @@ class MattGame {
   late String title;
   bool get levelFinished =>nrFood == 0;
 
+  final Mutations mutations = Mutations();
   Queue<GameSnapshot> snapshots = Queue();
 
   MattGame(Grid grid, {required this.level, required this.title}){
@@ -167,13 +168,16 @@ class MattGame {
       case Move.none: return RowCol(mrMatt.row, mrMatt.col);
       }
   }
-  
+  void playMutations() {
+    while (mutations.isNotEmpty) {grid.playMutation(mutations.pop());}
+  }  
   void moveMrMatt(int row, int col) {
-    grid.cell(mrMatt.row, mrMatt.col).setEmpty();
+    mutate(mrMatt.row, mrMatt.col, TileType.empty);
+    // grid.cell(mrMatt.row, mrMatt.col).setEmpty();
     if (grid.cell(row,col).isFood()) {
       nrFood -= 1;
     }
-    grid.cell(row,col).tileType=TileType.mrMatt;
+    mutate(row,col, TileType.mrMatt);
     mrMatt = RowCol(row,col);
     logDebug('Moved mrMatt to $mrMatt');
   }
@@ -182,7 +186,7 @@ class MattGame {
     int targetCol = move == Move.left ? col-1 : col+1;
     assert (grid.cell(row,targetCol).isEmpty());
     logDebug('moving object at [$row,$col] to $targetCol');
-    grid.cell(row,targetCol).tileType = grid.cell(row,col).tileType;
+    mutate(row,targetCol, grid.cell(row,col).tileType);
     MoveResult dropResult = handler.handle(row, targetCol);    
     logDebug('dropResult: $dropResult');
     return dropResult;
@@ -194,7 +198,8 @@ class MattGame {
       logDebug('--- invalid move');    
       return MoveResult.invalid;
     }
-    FallHandler handler = FallHandler(grid);
+    mutations.clear();
+    FallHandler handler = FallHandler(grid, mutations);
     MoveResult result;
     RowCol mrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
     Grid current = Grid.copy(grid);
@@ -204,12 +209,15 @@ class MattGame {
       if (result != MoveResult.invalid)
         {performed += 1;}
     } while (performed < repeat && result == MoveResult.ok && canMove(move));
+
     if (result != MoveResult.finish && result != MoveResult.killed && isStuck())
     { 
       mrMatt = grid.findMrMatt();
-      grid.cell(mrMatt.row,mrMatt.col).setLoser();
+      //? mutations?
+      mutate(mrMatt.row,mrMatt.col, TileType.loser);
       result = MoveResult.stuck;
     }
+    playMutations();
     takeSnapshot(current, move, result, performed-1, mrMatt);
     logDebug('SNAPSHOT: performMove ($result): repeat = ${lastMove!.repeat}');
     return result;     
@@ -265,6 +273,10 @@ class MattGame {
     nrFood = grid.nrFood();    
     mrMatt = grid.findMrMatt(); 
     return lastSnapshot.nrMoves;
+  }
+  void mutate(int row,int col,TileType tileType) {
+    mutations.push(row,col,tileType);
+    grid.setCell(row,col,Tile(tileType));
   }
   MoveResult playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) {
     MoveResult result = MoveResult.invalid;

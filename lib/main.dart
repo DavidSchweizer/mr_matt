@@ -205,6 +205,10 @@ class _MrMattHomeState extends State<MrMattHome> {
             MattAppBarButton(
                     onPressed: () async {_setupPlayback();},
                     iconData: Icons.playlist_play),
+            MattAppBarButton(
+                    onPressed: () async {wipwap();},
+                    iconData: Icons.auto_awesome_mosaic),
+                    
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
                   width: 10,
@@ -510,5 +514,20 @@ class _MrMattHomeState extends State<MrMattHome> {
     await _setupLoad();
     logDebug('loading');
   }
+  void wipwap() async {
+    
+    int row=random(0,GridConst.mattHeight);
+    int col=random(0,GridConst.mattWidth);
+    Tile tile = game!.grid.cell(row,col);
+    logDebug('wapping [$row,$col]  ($tile)');
+    setState(() 
+    { if (tile.isEmpty()) 
+      {game!.grid.setCell(row,col, Tile(TileType.bomb));}
+    else 
+      {game!.grid.setCell(row,col, Tile(TileType.empty));
+      }
+    });
+  }
 }
+
 

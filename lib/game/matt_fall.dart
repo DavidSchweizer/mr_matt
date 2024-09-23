@@ -5,8 +5,11 @@ import "../log.dart";
 class FallHandler {
   late Grid _grid;
   Grid get grid => _grid;
-  FallHandler(Grid grid){
+  late Mutations _mutations;
+  Mutations get mutations =>_mutations;
+  FallHandler(Grid grid, Mutations mutations){
     _grid = grid;
+    _mutations = mutations;
   }
   MoveResult handleAll(int row, int col) {
     MoveResult result = MoveResult.ok;
@@ -28,10 +31,15 @@ class FallHandler {
     logDebug('...End Dropping ALL  [$row,$col]: $result.');
     return result;
   }
+  void mutate(int row,int col,TileType tileType) {
+    mutations.push(row,col,tileType);
+    grid.setCell(row,col,Tile(tileType));
+  }
+
   MoveResult _killedMrMatt(Tile tile) {
     assert(tile.isMrMatt());
       logDebug('Oh no...');
-      tile.setLoser();
+      mutate(tile.row,tile.col, TileType.loser);
       return MoveResult.killed;         
   }
   MoveResult handle(int row, int col, {bool initial=true}) {
@@ -72,12 +80,12 @@ class FallHandler {
 
   MoveResult? _dropOneRow(int row, int col, Tile tile, Tile below, [bool initial=true]) {   
     if (_emptyBelow(row,col,tile,below)) {
-      grid.cell(row,col).setEmpty();
-      grid.setCell(row+1,col,tile);
+      mutate(row,col,TileType.empty);
+      mutate(row+1,col,tile.tileType);
       MoveResult result = handle(row+1,col, initial:false);
-      if (result == MoveResult.invalid) {
-        grid.cell(row+1,col).setEmpty();
-        grid.setCell(row,col,tile);
+      if (result == MoveResult.invalid) {        
+        mutate(row+1,col, TileType.empty);
+        mutate(row,col,tile.tileType);
         logDebug('...restored');
       }
       logDebug('end _emptyBelow $result');
@@ -89,8 +97,8 @@ class FallHandler {
              _bombBelow(row, col, tile, below) ||
              _rockBelow(row, col, tile, below)) {
       if (!initial && _testBomb(row,col,tile, below)) {
-        grid.cell(row,col).setEmpty();
-        below.setEmpty();
+        mutate(row,col,TileType.empty);
+        mutate(below.row,below.col,TileType.empty);
       }
       if (below.isStone())
         {return _handleRockBelow(row,col,tile,below);}      
@@ -108,9 +116,8 @@ class FallHandler {
   bool _rockBelow(int row, int col, Tile tile, Tile below)=> _testBelow(row, col, tile, below, below.isStone, 'rock');
   bool _boxBelow(int row, int col, Tile tile, Tile below) {
     if (_testBelow(row, col, tile, below, below.isBox, 'box')) {
-      grid.cell(row,col).setEmpty();
-      grid.setCell(row+1,col, below.boxConsume(tile));
-      logDebug('Handled box (tile: $tile  box after: ${grid.cell(row+1,col)})');
+      mutate(row,col,TileType.empty);
+      mutate(row+1,col,below.boxConsume(tile));
       return true;
     }
     return false;
@@ -132,7 +139,7 @@ class FallHandler {
       }
       logDebug('bomb EXPLODES! on ${below ?? "bottom"}');
       if (below != null)
-        {grid.cell(row+1, col).setEmpty();}
+        {mutate(row+1, col, TileType.empty);}
       return true;      
   }
   MoveResult? _handleRockBelow(row,col,tile,Tile below) {
@@ -156,14 +163,14 @@ class FallHandler {
     logDebug('...handling side for [$row,$col] $tile | side [$row,${col+delta} $side | sidebelow [${row+1},${col+delta}] $sideBelow');
     if (side != null && side.isEmpty() && sideBelow != null) {
       if (sideBelow.isEmpty()){      
-        grid.cell(row,col).setEmpty();
-        grid.setCell(row,col+delta,tile);
+        mutate(row,col,TileType.empty);
+        mutate(row,col+delta,tile.tileType);
         logDebug('...continue handling side');
         return handle(row,col+delta,initial:false);
       }
       else if (sideBelow.isMrMatt()) {
-        grid.cell(row,col).setEmpty();
-        grid.setCell(row,col+delta,tile);
+        mutate(row,col,TileType.empty);
+        mutate(row,col+delta,tile.tileType);
         return _killedMrMatt(sideBelow);
       }
     }
