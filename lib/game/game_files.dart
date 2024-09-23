@@ -5,11 +5,14 @@ import 'package:mr_matt/game/matt_sol.dart';
 import 'package:path/path.dart' as p;
 
 class GameFiles{
+
   Map<String,MattFiles> matFileData = {};
   Map<String,MattSolutionFile> solutions = {};
   Map<String,MattHallOfFameFile> hallOfFames = {};
   String currentMatDirectory = "";
   String versionLine = 'Version 3.6 #1899 (temporary)'; 
+  String allSolutionsFile = 'mr_matt.sol';
+
   Future<bool> loadMatFileData(String directory) async {
     directory = p.canonicalize(directory);
     if (matFileData[directory] != null) {// already loaded 
@@ -34,25 +37,45 @@ class GameFiles{
     for (MattFile file in files.mattFiles) {yield file;}
   }
 
-  String _solutionFileName(String directory, String gameFileName){
-    const String solExtension = '.sol';
-    String gameName= p.basenameWithoutExtension(gameFileName);
-    directory = p.canonicalize(directory);
-    return p.join(directory, gameName, solExtension);
+  // String _solutionFileName(String directory, String gameFileName){
+  //   const String solExtension = '.sol';
+  //   String gameName= p.basenameWithoutExtension(gameFileName);
+  //   directory = p.canonicalize(directory);
+  //   return p.join(directory, gameName, solExtension);
+  // }
+
+  Future <bool> updateSolution(String filename, String player, MattGame game, [save=false]) async {
+    MattSolutionFile solutionFile = solutions[filename]??MattSolutionFile();
+    solutionFile.update(player, game.title, game.level, game.getMoves());
+    solutions[filename] = solutionFile;    
+    if (save) {return saveSolutionFile(filename);}
+    return true;
   }
-  Future<bool> _loadSolutionFile(String directory, String gameFileName) async {
-    return await loadSolutionFile(_solutionFileName(directory, gameFileName));
+  // Future<bool> _loadSolutionFile(String directory, String gameFileName) async {
+  //   return await loadSolutionFile(_solutionFileName(directory, gameFileName));
+  // }
+  int highestSolutionLevel(String filename, String player, String gameTitle) {
+    MattSolutionFile? solution = solutions[filename];
+    if (solution == null) {return 0;}
+    else {
+      return solution.highestLevel(player, gameTitle);
+    }
   }
-  Future<bool> loadSolutionFile(String fileName) async {
+  Future<bool> loadSolutionFile(String filename) async {
     MattSolutionFile newSolution = MattSolutionFile();
-    bool result = await newSolution.parseFile(fileName);
-    if (result) {solutions[fileName] = newSolution;}
+    bool result = await newSolution.parseFile(filename);
+    if (result) {solutions[filename] = newSolution;}
     return result;
   }
-  Future<bool>saveGameFile(String player, MattGame game, int level, String gameFileName) {
+  Future <bool> saveSolutionFile(String filename) async {
+    MattSolutionFile? solution = solutions[filename];
+    if (solution == null) {return false;}
+    return solution.writeToFile(filename);
+  }
+  Future<bool>saveGameFile(String player, MattGame game, int level, String gameFileName) {    
     MattSolutionFile saveGame = MattSolutionFile(complete: game.nrFood==0);
     saveGame.versionLine = versionLine;
-    saveGame.update(player, game.game, level, game.getMoves());
+    saveGame.update(player, game.title, level, game.getMoves());
     return saveGame.writeToFile(gameFileName);    
   }
 

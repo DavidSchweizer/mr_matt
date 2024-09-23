@@ -249,10 +249,11 @@ class _MrMattHomeState extends State<MrMattHome> {
     try {
       bool result = await gameFiles.loadMatFileData(matDirectory);
       if (!result) {return false; }       
-      logDebug('resultaat loadFileData: ');
-      for (MattFile entry in gameFiles.getMatFile()) {       
-        logDebug('file: $entry');
-        int maxLevel = 1;
+      if (first) {
+        await gameFiles.loadSolutionFile(gameFiles.allSolutionsFile);
+      }
+      for (MattFile entry in gameFiles.getMatFile()) {               
+        int maxLevel = 1 + gameFiles.highestSolutionLevel(gameFiles.allSolutionsFile, player, entry.title);
         for (MattLevel level in entry.levels) {
           level.accessible = level.level <= maxLevel;
         }
@@ -321,22 +322,38 @@ class _MrMattHomeState extends State<MrMattHome> {
       startNewGame(newFile);
     }
   }
-  void _selectLevel(int level) {
-    _restartGameCheck(level != currentLevel ? 'Abandon current level?':null);
-    setState(() {currentLevel = level;});
+  void _selectLevel(int level) async {
+    if (game!.isNotEmpty && level != currentLevel && !game!.levelFinished) {
+      if (! await askConfirm(context, 'Abandon current level?')) {
+        return;
+      }
+    }    
+    _startGame(selectedFile, level);
   }
 
-  void startNewGame(MattFile? newFile) {
-    int newLevel = 0;
-    if (newFile == null) {return;}
-    MattGame newGame = MattGame(newFile.levels[newLevel].grid, level: newLevel, game: newFile.title);
+  void _startGame(MattFile? mattFile, int level) {
+    if (mattFile == null || level > mattFile.highestLevel()) {return;}
+    MattGame newGame = MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title);
     stopwatch.reset();
     stopwatch.start();
     setState(() {
-      selectedFile=newFile;
-      currentLevel = newLevel;
+      selectedFile=mattFile;
+      currentLevel = level;
       game=newGame;      
     });
+  }
+  void startNewGame(MattFile? newFile) {
+    if (newFile != null) {
+      _startGame(newFile, newFile.highestLevel());
+    }
+    // MattGame newGame = MattGame(newFile.levels[newLevel].grid, level: newLevel, title: newFile.title);
+    // stopwatch.reset();
+    // stopwatch.start();
+    // setState(() {
+    //   selectedFile=newFile;
+    //   currentLevel = newLevel;
+    //   game=newGame;      
+    // });
   }
   void _moveLeft() {
     _gameMove(Move.left);
@@ -398,7 +415,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     setState(() {    
           stopwatch.reset();         
           int newLevel = currentLevel??0;
-          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, game: selectedFile.title); 
+          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title); 
           _counter = 0;
           movesQueue.clear();
           stopwatch.start();});
@@ -433,14 +450,16 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   void _winner() async {
     _haltGame();
-    String format = stopwatch.hours > 0 ? 'hh:mm:ss':'mm:ss';    
+    assert (game!.levelFinished == true); 
+    String format = stopwatch.hours > 0 ? 'hh:mm:ss':'mm:ss';   
+    await gameFiles.updateSolution(gameFiles.allSolutionsFile, player, game!, true);
     bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
-    showMessageDialog(
-      context, 'You have completed ${gameSolved? "the whole game" : "this level"} in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
-    if (gameSolved) {
+    if (mounted) {
+      await showMessageDialog(
+        context, 'You have completed ${gameSolved? "the whole game" : "this level"} in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
       selectedFile.levels[currentLevel!+1].accessible = true;
-      setState(() { _selectLevel(currentLevel!+1);});
     }
+    setState(() { _selectLevel(currentLevel!+1);});    
   }
   void _loader() {
     _haltGame();
@@ -475,7 +494,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (await gameFiles.loadSolutionFile('mr_matt.sav')){
       MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
       if (saveGameFile != null) {
-        result = saveGameFile.find(player, game!.game,currentLevel!);
+        result = saveGameFile.findEntry(player, game!.title,currentLevel!);
       }
     }
     return result;

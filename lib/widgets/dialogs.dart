@@ -71,7 +71,7 @@ class _MessageDialogState extends State<MessageDialog> {
   }
 }
 
-void showMessageDialog(BuildContext context, String message) async {
+Future <void> showMessageDialog(BuildContext context, String message) async {
   await showDialog(
     context: context,
     builder: (BuildContext context) {

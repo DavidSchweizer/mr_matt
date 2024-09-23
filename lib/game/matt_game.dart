@@ -66,15 +66,18 @@ class MattGame {
   late int _nrFood; // nr of food (apples)
   int get nrFood=>_nrFood;
   set nrFood(value)=>_nrFood=value;
+  bool get isEmpty =>snapshots.isEmpty;
+  bool get isNotEmpty =>snapshots.isNotEmpty;
   
   late RowCol mrMatt; // location of MrMatt
   
   late int level;
-  late String game;
+  late String title;
+  bool get levelFinished =>nrFood == 0;
 
   Queue<GameSnapshot> snapshots = Queue();
 
-  MattGame(Grid grid, {required this.level, required this.game}){
+  MattGame(Grid grid, {required this.level, required this.title}){
     _startGrid = grid;
     this.grid = grid;
     nrFood = grid.nrFood();    

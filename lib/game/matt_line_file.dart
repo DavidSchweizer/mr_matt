@@ -4,11 +4,11 @@ import 'package:mr_matt/log.dart';
 
 abstract class MattLineFileEntry {
   late String player;
-  late String game;
+  late String gameTitle;
   late int level;
   late int nrMoves;
   late int checksum; // this is not used in this implementation
-  MattLineFileEntry({required this.player, required this.game, required this.level,required this.nrMoves, this.checksum=0}); 
+  MattLineFileEntry({required this.player, required this.gameTitle, required this.level,required this.nrMoves, this.checksum=0}); 
   String toExport();
 }
 
@@ -44,14 +44,14 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
   void parseVersionLine(String line){
     versionLine = line.trim();    
   }
-  FT newEntry({required String player, required String game, required int level, required int nrMoves, required int checksum, required Map<String,String>otherFields});  
+  FT newEntry({required String player, required String gameTitle, required int level, required int nrMoves, required int checksum, required Map<String,String>otherFields});  
   FT parseLineEntry(String line) {
     const Set<String> baseNames = {'player', 'game', 'level', 'nrmoves', 'checksum'};
     Map<String,String> matchedNames = _parseLine(line);
     Map<String,String> otherFields = {};
     matchedNames.forEach((name,value) {if (!baseNames.contains(name)) {otherFields[name] = value;}});
     return newEntry(           
-            player: matchedNames['player']!, game: matchedNames['game']!, 
+            player: matchedNames['player']!, gameTitle: matchedNames['game']!, 
             level:int.tryParse(matchedNames['level']!)??0,
             nrMoves: int.tryParse(matchedNames['nrmoves']!)??0,
             checksum: int.tryParse(matchedNames['checksum']!)??0,
@@ -107,19 +107,19 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
     versionLine='';
     entries.clear();
   }
-  FT? find(String player, String game, [int level = 0]) {
+  FT? findEntry(String player, String gameTitle, [int level = 0]) {
     for (FT entry in entries) {
-      if (player==entry.player && game==entry.game && level == entry.level) {
+      if (player==entry.player && gameTitle==entry.gameTitle && level == entry.level) {
         return entry;
       }
     }
     return null;
   }
-  FT? highestLevel(String player, String game) {
-    FT? result = find(player, game);
+  FT? highestLevelEntry(String player, String gameTitle) {
+    FT? result = findEntry(player, gameTitle);
     if (result!=null) {
       for (FT entry in entries) {
-        if (entry != result && player==entry.player && game==entry.game && entry.level > result!.level) {result = entry;}
+        if (entry != result && player==entry.player && gameTitle==entry.gameTitle && entry.level > result!.level) {result = entry;}
       }
     }
     return result;

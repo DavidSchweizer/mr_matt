@@ -4,7 +4,7 @@ import 'matt_game.dart';
 class MattLevelMoves extends MattLineFileEntry{
   late Moves moves;
   MattLevelMoves({required this.moves,
-                required super.player, required super.game, required super.level,
+                required super.player, required super.gameTitle, required super.level,
                 super.checksum}): super(nrMoves: moves.nrMoves);
   String _moveExport(Move move, int repeat) {
     return '${repeat>0?repeat.toString():""}${moveToCode[move]}';
@@ -12,7 +12,7 @@ class MattLevelMoves extends MattLineFileEntry{
 
   @override
   String toExport() {
-    String firstPart = '${level+1}X $nrMoves $player|$game|';
+    String firstPart = '${level+1}X $nrMoves $player|$gameTitle|';
     String movesPart = '';
     Move current = Move.none; 
     int repeat = 0;
@@ -44,9 +44,9 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
   final RegExp moveRegex = RegExp(movePattern);
   List<MattLevelMoves> get solutions=>entries;
   @override
-  MattLevelMoves newEntry({required String player, required String game, required int level, required int nrMoves, required int checksum, required Map<String,String> otherFields}) {
+  MattLevelMoves newEntry({required String player, required String gameTitle, required int level, required int nrMoves, required int checksum, required Map<String,String> otherFields}) {
     return MattLevelMoves(moves: _parseMoves(otherFields['moves']!), 
-                          player: player, game: game, level: level-1, checksum: checksum); 
+                          player: player, gameTitle: gameTitle, level: level-1, checksum: checksum); 
   }
   Moves _parseMoves(String moves) {
     Moves result = Moves();
@@ -56,10 +56,10 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
     }
     return result;
   }
-  bool update(String player, String game, int level, Moves moves) {
-    MattLevelMoves? current = find(player, game,level);
+  bool update(String player, String gameTitle, int level, Moves moves) {
+    MattLevelMoves? current = findEntry(player, gameTitle,level);
     if (current == null) {
-      entries.add(MattLevelMoves(moves: moves, player: player, game: game, level: level, ));
+      entries.add(MattLevelMoves(moves: moves, player: player, gameTitle: gameTitle, level: level, ));
       return true;
     }
     else if (moves.nrMoves < current.nrMoves) {
@@ -68,5 +68,13 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
     }
     return false;
   }  
+  int highestLevel(String player, String gameTitle) {
+    int level = 0;
+    while (true) {
+      if (findEntry(player, gameTitle, level) == null) {break; }
+      level++;
+    }
+    return level;
+  }
 }
 

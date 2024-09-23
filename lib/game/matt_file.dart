@@ -20,7 +20,11 @@ class MattFile {
   final List<MattLevel> _levels = [];
   List<MattLevel> get levels => _levels;
   int get nrLevels=>_levels.length;
-
+  int highestLevel() {
+    int level = 0;
+    while (level < nrLevels && levels[level].accessible) {level++;}
+    return level-1;
+  }
   bool isNotEmpty() {
     return _levels.isNotEmpty;
   }
