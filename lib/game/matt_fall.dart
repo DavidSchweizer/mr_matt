@@ -1,3 +1,5 @@
+import "package:flutter/material.dart";
+
 import "matt_grid.dart";
 import "matt_game.dart";
 import "../log.dart";
@@ -7,19 +9,25 @@ class FallHandler {
   Grid get grid => _grid;
   late TileMoves _tileMoves;
   TileMoves get tileMoves =>_tileMoves;
-  FallHandler(Grid grid, TileMoves tileMoves){
+  late Function()? _callback;
+  final bool _detailedLog = false;
+
+  void _log(String s){ 
+    if (_detailedLog) logDebug(s);
+  }
+  FallHandler(Grid grid, TileMoves tileMoves, [Function()? callback]){
     _grid = grid;
     _tileMoves = tileMoves;
+    _callback = callback;
   }
   MoveResult handleAll(int row, int col) {
     MoveResult result = MoveResult.ok;
-    // bool first = true;
-    
-    logDebug('Dropping ALL [$row,$col] ${grid.cell(row,col)}');
+    // bool first = true;    
+    _log('Dropping ALL [$row,$col] ${grid.cell(row,col)}');
     while (//result != MoveResult.killed && result != MoveResult.finish && 
           GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) { 
       MoveResult temResult = handle(row,col);
-      logDebug('\tdropped one [$row,$col] ${grid.cell(row,col)}: $temResult.');
+      _log('\tdropped one [$row,$col] ${grid.cell(row,col)}: $temResult.');
       if (result == MoveResult.ok && temResult != MoveResult.ok) {
         result = temResult;
       }
@@ -28,19 +36,24 @@ class FallHandler {
       // if (GridConst.isTop(row)) {break;} else {row -=1;}
       row -=1;
     } 
-    logDebug('...End Dropping ALL  [$row,$col]: $result.');
+    _log('...End Dropping ALL  [$row,$col]: $result.');
     return result;
   }
-  void moveTile(int rowStart,int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) {
-    tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileTypeEnd);
+  
+  void moveTile(int rowStart,int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) async {
     grid.cell(rowStart,colStart).setEmpty();
     grid.setCell(rowEnd, colEnd, Tile(tileTypeEnd));
+    tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileTypeEnd);
     logDebug('moveTile(fallhandler): ${tileMoves.last}');
+    if (_callback != null) {
+      _callback!();
+      // await Future.delayed(Durations.short1);
+    }
   }
 
   MoveResult _killedMrMatt(Tile tile) {
     assert(tile.isMrMatt());
-      logDebug('Oh no...');
+      _log('Oh no...');
       // mutate(tile.row,tile.col, TileType.loser);
       return MoveResult.killed;         
   }
@@ -49,26 +62,26 @@ class FallHandler {
     assert (GridConst.isGridRow(row) && GridConst.isGridCol(col));
     Tile tile = Tile.copy(grid.cell(row,col));
     if (!tile.isMovable()){
-      logDebug('tile at $row,$col ($tile) is not movable');
+      _log('tile at $row,$col ($tile) is not movable');
       return MoveResult.ok;
     }
-    logDebug('START drop [$row,$col] ($tile)');
+    _log('START drop [$row,$col] ($tile)');
     if (GridConst.isBottom(row)){
-      logDebug('--- END drop (at bottom)');
+      _log('--- END drop (at bottom)');
       if (!initial) {
         _testBomb(row, col, tile, null);
       }
       return MoveResult.ok;
     }
     Tile below = grid.cell(row+1,col);
-    logDebug('Below [${row+1},$col] $below');        
+    _log('Below [${row+1},$col] $below');        
     if (!initial && below.isMrMatt()) {
       return _killedMrMatt(below);
     }
     try {
       MoveResult? result = _dropOneRow(row, col, tile, below, initial);
       if (result == null){
-        logDebug('--- END drop (restoring the tile)');
+        _log('--- END drop (restoring the tile)');
         grid.setCell(row,col, tile); 
         return MoveResult.invalid;
       }
@@ -86,9 +99,9 @@ class FallHandler {
       MoveResult result = handle(row+1,col, initial:false);
       if (result == MoveResult.invalid) {        
         moveTile(row+1,col,row,col,tile.tileType);
-        logDebug('...restored');
+        _log('...restored');
       }
-      logDebug('end _emptyBelow $result');
+      _log('end _emptyBelow $result');
       return result;
     }
     else if (_wallBelow(row, col, tile, below) || 
@@ -122,7 +135,7 @@ class FallHandler {
   }
   bool _testBelow(int row, int col, Tile tile, Tile below, bool Function() test, String msg) {
     if (test()) {
-      logDebug('$msg tested true: ($tile)');
+      _log('$msg tested true: ($tile)');
       return true;
     }
     return false;
@@ -132,10 +145,10 @@ class FallHandler {
       if (!tile.isBomb())
         {return false;}
       if (below != null && below.isBombFree()) {
-        logDebug('bomb will not explode on $below.');
+        _log('bomb will not explode on $below.');
         return false;
       }
-      logDebug('bomb EXPLODES! on ${below ?? "bottom"}');
+      _log('bomb EXPLODES! on ${below ?? "bottom"}');
       if (below != null) {
         moveTile(row,col,row+1,col,TileType.empty);
       }
@@ -144,26 +157,26 @@ class FallHandler {
   MoveResult? _handleRockBelow(row,col,tile,Tile below) {
     assert (below.isStone());    
     // ignoring the case where both left and right are possible for now
-    logDebug('handling rock below for [$row,$col] $tile');
-    logDebug('=== try left ===');
+    _log('handling rock below for [$row,$col] $tile');
+    _log('=== try left ===');
     MoveResult? result = _handleSide(row, col, -1, tile, GridConst.isLeft);
     if (result!=null) {
-      logDebug('=== end handling rock below for [$row,$col]: $result');
+      _log('=== end handling rock below for [$row,$col]: $result');
       return result;
     }
-    logDebug('=== try right ===');
+    _log('=== try right ===');
     result = _handleSide(row, col, 1, tile, GridConst.isRight);
-    logDebug('=== end handling rock below for [$row,$col]: $result');
+    _log('=== end handling rock below for [$row,$col]: $result');
     return result ?? MoveResult.ok;
   }
   MoveResult? _handleSide(int row, int col, int delta, Tile tile, bool Function(int) borderTest){
     Tile? side = borderTest(col)?null:grid.cell(row,col+delta);
     Tile? sideBelow = borderTest(col)?null:grid.cell(row+1,col+delta);    
-    logDebug('...handling side for [$row,$col] $tile | side [$row,${col+delta} $side | sidebelow [${row+1},${col+delta}] $sideBelow');
+    _log('...handling side for [$row,$col] $tile | side [$row,${col+delta} $side | sidebelow [${row+1},${col+delta}] $sideBelow');
     if (side != null && side.isEmpty() && sideBelow != null) {
       if (sideBelow.isEmpty()){      
         moveTile(row,col,row,col+delta,tile.tileType);
-        logDebug('...continue handling side');
+        _log('...continue handling side');
         return handle(row,col+delta,initial:false);
       }
       else if (sideBelow.isMrMatt()) {
@@ -171,7 +184,7 @@ class FallHandler {
         return _killedMrMatt(sideBelow);
       }
     }
-    logDebug('...end handling side (null)');
+    _log('...end handling side (null)');
     return null;
   }
 }

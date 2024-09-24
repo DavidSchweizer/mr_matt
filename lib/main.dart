@@ -64,9 +64,11 @@ class _MrMattHomeState extends State<MrMattHome> {
   
   final Duration timerDelay = Durations.short1;
   Queue<Move> movesQueue = Queue<Move>();
-  TileMoves tileMoves = TileMoves();
+  // TileMoves tileMoves = TileMoves();
+  TileMoves? tileMoves = TileMoves();
 
   Timer? playBackTimer;
+  Timer? movesTimer;
 
   void _pushMove(Move move) => movesQueue.addLast(move);
   void _pushMoveRecord(MoveRecord moveRecord) {
@@ -74,9 +76,10 @@ class _MrMattHomeState extends State<MrMattHome> {
       _pushMove(moveRecord.move);}
   }
   Move _popMove() => movesQueue.removeFirst();
-  Future<MoveResult> playBackOne() async {
-    MoveResult result = await _gameMove(_popMove());
-    return result;
+  // Future<MoveResult> playBackOne() async {
+  void playBackOne() {
+    // MoveResult result = ;
+    _gameMove(_popMove());
   }
   
   GameFiles gameFiles = GameFiles();
@@ -141,11 +144,12 @@ class _MrMattHomeState extends State<MrMattHome> {
     super.initState();
     playBackTimer = Timer.periodic(timerDelay, 
                               (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
+    movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
   }
   @override
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
-    grid ??= game == null ? null : Grid.copy(game!.grid);
+    // grid ??= game == null ? null : Grid.copy(game!.grid);
     // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}      
     return Scaffold(
         appBar: AppBar(
@@ -343,14 +347,16 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _startGame(MattFile? mattFile, int level) {
     if (mattFile == null || level > mattFile.highestLevel()) {return;}
     grid = null;
-    MattGame newGame = MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title);
+    MattGame newGame = MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title, callback: _checkPlaybackMove);
     stopwatch.reset();
     stopwatch.start();
     setState(() {
       _counter = 0;
       selectedFile=mattFile;
       currentLevel = level;
-      game=newGame;      
+      game=newGame; 
+      grid=Grid.copy(game!.grid);
+      tileMoves = game!.tileMoves;
     });
   }
   void startNewGame(MattFile? newFile) {
@@ -370,30 +376,58 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _moveDown() {
     _gameMove(Move.down);
   }
-  void _playbackMove(Timer timer) async {
-    if (tileMoves.isEmpty) {
-      timer.cancel();
+  
+  void _checkPlaybackMove() async {
+    if (tileMoves == null || tileMoves!.isEmpty) {
+      // logDebug('no tile moves available {${DateTime.now()}}');
+      return;
     }
     else {
-      TileMove tileMove = tileMoves.pop()!;
+      logDebug('moving tiles {${DateTime.now()}} (${tileMoves!.length})');
+      TileMove tileMove = tileMoves!.pop()!;
       setState(() 
       { grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
         grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
         }
       );
+      logDebug('end moving tiles {${DateTime.now()}}');
       await Future.delayed(Durations.short1);
     }
   }
-  Future<MoveResult> _gameMove (Move move, [int repeat = 0]) async {
-    if (game == null) {return MoveResult.invalid;}    
+
+  void _playbackMove(Timer timer) async {
+    _checkPlaybackMove();
+  }
+  
+  //Future<MoveResult> _gameMove (Move move, [int repeat = 0]) async {
+  Future<void> _gameMove (Move move, [int repeat = 0]) async {
+    if (game == null) {return; }    
     if (!game!.canMove(move)) {       
       logDebug('Uh-oh: can not perform move $move');
-      return MoveResult.invalid; 
+      return; 
     } 
-    MoveResult result = MoveResult.invalid;
-    result = game!.performMove(move, repeat);
-    tileMoves.add(game!.tileMoves);
-    Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
+    // result = await game!.performMove(move, repeat);
+    // Future <MoveResult> result;
+    MoveResult? result;
+    logDebug('///scheduliting {${DateTime.now()}}');
+    scheduleMicrotask(() async {result = await game!.performMove(move, repeat); _afterMove(result??MoveResult.invalid);});
+    logDebug('///scheduled {${DateTime.now()}}');
+    // tileMoves.add(game!.tileMoves);
+    // 
+    // setState(() {
+    //   GameSnapshot? lastSnapshot = game!.lastSnapshot;
+    //   _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
+    // });
+    // switch  (result) {
+    //   case MoveResult.finish: { _winner();}
+    //   case MoveResult.stuck: { _ohNo(false);}
+    //   case MoveResult.killed: {_ohNo(true);}
+    // default:
+    // }
+    // return result??MoveResult.ok;
+  }
+
+  void _afterMove(MoveResult result) {
     setState(() {
       GameSnapshot? lastSnapshot = game!.lastSnapshot;
       _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
@@ -404,8 +438,8 @@ class _MrMattHomeState extends State<MrMattHome> {
       case MoveResult.killed: {_ohNo(true);}
     default:
     }
-    return result;
   }
+
   void _tileTapped(Tile tile){
     if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     _moveToTarget(tile);
@@ -434,10 +468,11 @@ class _MrMattHomeState extends State<MrMattHome> {
     setState(() {    
           stopwatch.reset();         
           int newLevel = currentLevel??0;
-          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title); 
+          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title, callback:_checkPlaybackMove); 
+          grid = Grid.copy(game!.grid);
           _counter = 0;
           movesQueue.clear();
-          tileMoves.clear();
+          tileMoves!.clear();
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
@@ -467,7 +502,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     });
   }
   void _ohNo(bool killed) {
-    tileMoves.push(game!.mrMatt.row, game!.mrMatt.col, game!.mrMatt.row, game!.mrMatt.col, TileType.loser);
+    tileMoves!.push(game!.mrMatt.row, game!.mrMatt.col, game!.mrMatt.row, game!.mrMatt.col, TileType.loser);
     _haltGame();
     showMessageDialog(context, killed? 
             "Oh no, you've killed Mr. Matt..." :
@@ -506,10 +541,12 @@ class _MrMattHomeState extends State<MrMattHome> {
     logDebug('END setupPlayback');
   }
 
-  void _playbackCheck(Timer timer) async {
+  void _playbackCheck(Timer timer) {
     logDebug('---- Playback?... ($_playBackCount)');
-    MoveResult result = await playBackOne(); 
-    logDebug('---- END Playback ($_playBackCount)... $result');
+    // MoveResult result = await playBackOne(); 
+    // MoveResult result = playBackOne(); 
+    playBackOne(); 
+    logDebug('---- END Playback ($_playBackCount)...');
     _playBackCount++;
   }
   void _saveGame() async {

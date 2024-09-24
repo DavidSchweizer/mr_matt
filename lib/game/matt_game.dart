@@ -1,4 +1,5 @@
 import "dart:collection";
+import "package:flutter/material.dart";
 import "package:mr_matt/log.dart";
 
 import "matt_grid.dart";
@@ -77,19 +78,24 @@ class MattGame {
 
   final TileMoves tileMoves = TileMoves();
   Queue<GameSnapshot> snapshots = Queue();
+  final bool _detailedLog = false;
 
-  MattGame(Grid grid, {required this.level, required this.title}){
+  void _log(String s){ 
+    if (_detailedLog) logDebug(s);
+  }
+
+  Function()? callback;
+  MattGame(Grid grid, {required this.level, required this.title, required this.callback}) {
     _startGrid = grid;
     this.grid = grid;
     nrFood = grid.nrFood();    
-    mrMatt=grid.findMrMatt();        
+    mrMatt=grid.findMrMatt();
   }
   Moves getMoves() {
     Moves moves = Moves();
     for (GameSnapshot snapshot in snapshots) {
       moves.addMove(snapshot.moveRecord);
-    }
-    logDebug('Moves: $moves');
+    }    
     return moves;
   }
   MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
@@ -115,12 +121,12 @@ class MattGame {
     assert ((col-mrMatt.col).abs() == 1);
     int nextCol = col + col - mrMatt.col;
     if (!GridConst.isGridCol(nextCol)) {
-      logDebug('---at border');    
+      _log('---at border');    
       return false;
     }
     Tile nextCell = grid.cell(row, nextCol);
     bool isEmpty = nextCell.isEmpty();
-    logDebug('---next cell $nextCell  (empty: $isEmpty)');    
+    _log('---next cell $nextCell  (empty: $isEmpty)');    
     return isEmpty;
   }
   bool canMove(Move move) {
@@ -128,7 +134,7 @@ class MattGame {
       return false;
     }
     RowCol targetLoc = _rolColFromMove(move);
-    logDebug('Start canMove  $move to ($targetLoc)');    
+    _log('Start canMove  $move to ($targetLoc)');    
     if (!_moveValid(targetLoc.row,targetLoc.col)) {
       return false;
     }
@@ -140,19 +146,19 @@ class MattGame {
       throw(MrMattException('Multiple MrMatt'));
     }
     else if (target.isWall()) {
-      logDebug('WALL');
+      _log('WALL');
       return false;
     }
     else if (target.isConsumable() || target.isEmpty()) 
     {
-      logDebug('---consumable or empty [canMove:TRUE]');          
+      _log('---consumable or empty [canMove:TRUE]');          
       return true;
     }
     else if (target.isMovable()) {
         // can only move one item in a row, not up or down
       if (isHorizontalMove(move)) {
         bool result = targetLoc.row == mrMatt.row && _checkCanMoveObject(targetLoc.row, targetLoc.col);
-        logDebug('---movable [canMove: $result]');
+        _log('---movable [canMove: $result]');
         return result;
       }
       else {return false;}
@@ -168,38 +174,37 @@ class MattGame {
       case Move.none: return RowCol(mrMatt.row, mrMatt.col);
       }
   }
-  void playTileMoves() {
-    while (tileMoves.isNotEmpty) {grid.moveTile(tileMoves.pop());}
-  }  
   void moveMrMatt(int row, int col) {
     if (grid.cell(row,col).isFood()) {
       logDebug('--- hap! ($row,$col)');
       nrFood -= 1;
     }
-    moveTile(mrMatt.row, mrMatt.col, row, col, TileType.mrMatt);
+    int oldRow = mrMatt.row;
+    int oldCol = mrMatt.col;
+    mrMatt = RowCol(row,col);   
+    moveTile(oldRow, oldCol, row, col, TileType.mrMatt);
     // grid.cell(mrMatt.row, mrMatt.col).setEmpty();
-    mrMatt = RowCol(row,col);
     logDebug('Moved mrMatt to $mrMatt');
   }
   MoveResult _moveObject(int row, int col, Move move, FallHandler handler) {
     assert (isHorizontalMove(move));
     int targetCol = move == Move.left ? col-1 : col+1;
     assert (grid.cell(row,targetCol).isEmpty());
-    logDebug('moving object at [$row,$col] to $targetCol');
+    _log('moving object at [$row,$col] to $targetCol');
     moveTile(row, col, row, targetCol, grid.cell(row,col).tileType);
     MoveResult dropResult = handler.handle(row, targetCol);    
-    logDebug('dropResult: $dropResult');
+    _log('dropResult: $dropResult');
     return dropResult;
   }
     
-  MoveResult performMove(Move move, [int repeat = 0]) {
-    logDebug('Start perform move ($move) target ($move) repeat:$repeat');    
+  Future<MoveResult> performMove(Move move, [int repeat = 0]) async {
+  // MoveResult performMove(Move move, [int repeat = 0]) {
+    logDebug('Start perform move {${DateTime.now()}} ($move) target ($move) repeat:$repeat');    
     if (!canMove(move)) {
       logDebug('--- invalid move');    
       return MoveResult.invalid;
     }
-    tileMoves.clear();
-    FallHandler handler = FallHandler(grid, tileMoves);
+    FallHandler handler = FallHandler(grid, tileMoves, callback);
     MoveResult result;
     RowCol mrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
     Grid startGrid = Grid.copy(grid);
@@ -207,9 +212,9 @@ class MattGame {
     do {
       result = _performMove(move, handler);
       if (result != MoveResult.invalid)
-        {performed += 1;}
+        {performed += 1; } // callback?
+      if (callback != null) {callback!();}
     } while (performed < repeat && result == MoveResult.ok && canMove(move));
-
     if (result != MoveResult.finish && result != MoveResult.killed && isStuck())
     { 
       mrMatt = grid.findMrMatt();
@@ -217,7 +222,7 @@ class MattGame {
     }
     // playTileMoves(); // for now, should be done in interface to simulate movement
     takeSnapshot(startGrid, move, result, performed-1, mrMatt);
-    logDebug('SNAPSHOT: performMove ($result): repeat = ${lastMove!.repeat}');
+    logDebug('SNAPSHOT: end performMove {${DateTime.now()}} ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
@@ -227,29 +232,31 @@ class MattGame {
     return true;
   }
   MoveResult _performMove(Move move, FallHandler handler) {
-    logDebug('starting _performMove ($move) target ($move)');    
+    _log('starting _performMove ($move) target ($move)');    
     RowCol target = _rolColFromMove(move);
     int currentRow = mrMatt.row;
     int currentCol = mrMatt.col;
     MoveResult result = MoveResult.ok;
     if (isHorizontalMove(move) &&
         grid.cell(target.row,target.col).isMovable() &&
-        _checkCanMoveObject(target.row, target.col)){
-        logDebug('Horizontal move: target $target (${grid.cell(target.row,target.col)})');
+        _checkCanMoveObject(target.row, target.col)) {
+        _log('Horizontal move: target $target (${grid.cell(target.row,target.col)})');
       result = _moveObject(target.row, target.col, move, handler);
-      if (result != MoveResult.ok) {return result;}
+      if (result != MoveResult.ok) {
+        return result;
+      }
     }    
     moveMrMatt(target.row, target.col);
     if (!GridConst.isTop(currentRow) && isHorizontalMove(move)) {
-      logDebug('dropping [${currentRow-1},$currentCol]');
+      _log('dropping [${currentRow-1},$currentCol]');
       result = handler.handleAll(currentRow-1, currentCol);
-      logDebug('--- dropping result is $result');
+      _log('--- dropping result is $result');
     }
     if (nrFood == 0) {
-      logDebug('FINISHED!');
+      _log('FINISHED!');
       result = MoveResult.finish;
     }
-    logDebug('--- _performMove result is $result');
+    _log('--- _performMove result is $result');
     return result;
   }
   bool _stuffAboveMrMattBlocksVerticalMove(Move move) {
@@ -272,21 +279,27 @@ class MattGame {
     mrMatt = grid.findMrMatt(); 
     return lastSnapshot.nrMoves;
   }
-  void moveTile(int rowStart,int colStart,int rowEnd,int colEnd,TileType tileTypeEnd) {
-    tileMoves.push(rowStart,colStart,rowEnd,colEnd,tileTypeEnd);
+  void moveTile(int rowStart,int colStart,int rowEnd,int colEnd,TileType tileTypeEnd) async {
     grid.cell(rowStart,colStart).setEmpty();
     grid.cell(rowEnd,colEnd).setTileType(tileTypeEnd);
-    logDebug('moveTile: ${tileMoves.last}');
-  }
-
-  MoveResult playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) {
-    MoveResult result = MoveResult.invalid;
-    for (MoveRecord move in moves.moves) {
-        result = performMove(move.move, move.repeat);
-        if (callback!=null) {callback(move, result);}
-        if (result != MoveResult.ok){break;}
+    tileMoves.push(rowStart,colStart,rowEnd,colEnd,tileTypeEnd);
+    logDebug('moveTile: ${tileMoves.last} (van ${tileMoves.length})  callback: $callback');
+    if (callback != null) {
+        // await Future.delayed(Durations.short1);
+        logDebug('before callback');
+        callback!();
+        logDebug('after callback');
+        // await Future.delayed(Durations.short1);
+      }
     }
-    return result;
-  }
+  // Future<MoveResult> playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) async {
+  //   MoveResult result = MoveResult.invalid;
+  //   for (MoveRecord move in moves.moves) {
+  //       result = await performMove(move.move, move.repeat);
+  //       if (callback!=null) {callback(move, result);}
+  //       if (result != MoveResult.ok){break;}
+  //   }
+  //   return result;
+  // }
 }
 
