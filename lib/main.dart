@@ -46,6 +46,7 @@ class MrMattHome extends StatefulWidget {
 }
 
 class _MrMattHomeState extends State<MrMattHome> {
+  int _playBackCount=0;
   final String matDirectory = p.canonicalize('mat');
 
   int _counter = 0;
@@ -55,12 +56,16 @@ class _MrMattHomeState extends State<MrMattHome> {
   LogicalKeyboardKey? lastKeyDown;
   MattFile selectedFile=MattFile();
   MattGame? game;
+  Grid? grid;
+
   MattFile? newFile;
   int? currentLevel;
   String player = "Mr David #1899";
   
-  final Duration timerDelay = const Duration(milliseconds:100);
+  final Duration timerDelay = Durations.short1;
   Queue<Move> movesQueue = Queue<Move>();
+  TileMoves tileMoves = TileMoves();
+
   Timer? playBackTimer;
 
   void _pushMove(Move move) => movesQueue.addLast(move);
@@ -140,7 +145,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   @override
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
-    Grid? grid = game?.grid;
+    grid ??= game == null ? null : Grid.copy(game!.grid);
     // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}      
     return Scaffold(
         appBar: AppBar(
@@ -337,10 +342,12 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   void _startGame(MattFile? mattFile, int level) {
     if (mattFile == null || level > mattFile.highestLevel()) {return;}
+    grid = null;
     MattGame newGame = MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title);
     stopwatch.reset();
     stopwatch.start();
     setState(() {
+      _counter = 0;
       selectedFile=mattFile;
       currentLevel = level;
       game=newGame;      
@@ -350,14 +357,6 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (newFile != null) {
       _startGame(newFile, newFile.highestLevel());
     }
-    // MattGame newGame = MattGame(newFile.levels[newLevel].grid, level: newLevel, title: newFile.title);
-    // stopwatch.reset();
-    // stopwatch.start();
-    // setState(() {
-    //   selectedFile=newFile;
-    //   currentLevel = newLevel;
-    //   game=newGame;      
-    // });
   }
   void _moveLeft() {
     _gameMove(Move.left);
@@ -371,6 +370,20 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _moveDown() {
     _gameMove(Move.down);
   }
+  void _playbackMove(Timer timer) async {
+    if (tileMoves.isEmpty) {
+      timer.cancel();
+    }
+    else {
+      TileMove tileMove = tileMoves.pop()!;
+      setState(() 
+      { grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
+        grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
+        }
+      );
+      await Future.delayed(Durations.short1);
+    }
+  }
   Future<MoveResult> _gameMove (Move move, [int repeat = 0]) async {
     if (game == null) {return MoveResult.invalid;}    
     if (!game!.canMove(move)) {       
@@ -378,12 +391,13 @@ class _MrMattHomeState extends State<MrMattHome> {
       return MoveResult.invalid; 
     } 
     MoveResult result = MoveResult.invalid;
+    result = game!.performMove(move, repeat);
+    tileMoves.add(game!.tileMoves);
+    Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
     setState(() {
-      result = game!.performMove(move, repeat);
       GameSnapshot? lastSnapshot = game!.lastSnapshot;
       _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
     });
-    await Future.delayed(Durations.medium2);
     switch  (result) {
       case MoveResult.finish: { _winner();}
       case MoveResult.stuck: { _ohNo(false);}
@@ -411,6 +425,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (game==null || _counter == 0) {return;}      
     setState(() {      
       _counter -= game!.undoLast();
+      grid = Grid.copy(game!.grid);
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
   }
@@ -422,6 +437,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title); 
           _counter = 0;
           movesQueue.clear();
+          tileMoves.clear();
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
@@ -444,9 +460,14 @@ class _MrMattHomeState extends State<MrMattHome> {
     _pushMoveRecord(MoveRecord(move:move, repeat:nrTimes.abs()));
   }
   void _haltGame(){
-    setState(() {stopwatch.stop();movesQueue.clear();});
+    stopwatch.stop();
+    movesQueue.clear();
+    // tileMoves.clear();
+    setState(() {
+    });
   }
   void _ohNo(bool killed) {
+    tileMoves.push(game!.mrMatt.row, game!.mrMatt.col, game!.mrMatt.row, game!.mrMatt.col, TileType.loser);
     _haltGame();
     showMessageDialog(context, killed? 
             "Oh no, you've killed Mr. Matt..." :
@@ -486,9 +507,10 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
 
   void _playbackCheck(Timer timer) async {
-    logDebug('---- Playback?...');
+    logDebug('---- Playback?... ($_playBackCount)');
     MoveResult result = await playBackOne(); 
-    logDebug('---- END Playback... $result');
+    logDebug('---- END Playback ($_playBackCount)... $result');
+    _playBackCount++;
   }
   void _saveGame() async {
     await gameFiles.saveGameFile(player, game!, currentLevel!, 'mr_matt.sav');
@@ -514,11 +536,10 @@ class _MrMattHomeState extends State<MrMattHome> {
     await _setupLoad();
     logDebug('loading');
   }
-  void wipwap() async {
-    
+  void wipwap() async {  
     int row=random(0,GridConst.mattHeight);
     int col=random(0,GridConst.mattWidth);
-    Tile tile = game!.grid.cell(row,col);
+    Tile tile = grid!.cell(row,col);
     logDebug('wapping [$row,$col]  ($tile)');
     setState(() 
     { if (tile.isEmpty()) 

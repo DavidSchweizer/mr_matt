@@ -92,20 +92,21 @@ class Tile {
   bool isConsumable()=>isGrass() || isFood();
   bool isMovable()=>isStone() || isBomb() || isBox();
   bool isBombFree()=>isBox() || isConsumable() || isEmpty() || isMrMatt();
-  void setEmpty()=>tileType=TileType.empty;
-  void setMrMatt()=>tileType=TileType.mrMatt;
-  void setStone()=>tileType=TileType.stone;
-  void setWall()=>tileType=TileType.wall;
-  void setBomb()=>tileType=TileType.bomb;
+  void setTileType(TileType tileType)=>this.tileType=tileType;
+  void setEmpty()=>setTileType(TileType.empty);
+  void setMrMatt()=>setTileType(TileType.mrMatt);
+  void setStone()=>setTileType(TileType.stone);
+  void setWall()=>setTileType(TileType.wall);
+  void setBomb()=>setTileType(TileType.bomb);
   void setBox(int value) {
-    if (value == 1) {tileType=TileType.box1;}
-    else if (value == 2) {tileType=TileType.box2;}
-    else if (value == 3) {tileType=TileType.box3;}
+    if (value == 1) {setTileType(TileType.box1);}
+    else if (value == 2) {setTileType(TileType.box2);}
+    else if (value == 3) {setTileType(TileType.box3);}
     else {throw(MrMattException('Invalid argument for setBox: $value'));}
   }
-  void setGrass()=>tileType=TileType.grass;
-  void setFood()=>tileType=TileType.food;
-  void setLoser()=>tileType=TileType.loser;
+  void setGrass()=>setTileType(TileType.grass);
+  void setFood()=>setTileType(TileType.food);
+  void setLoser()=>setTileType(TileType.loser);
   TileType boxConsume(Tile tile) {
     assert (isBox());
     TileType newType;
@@ -206,6 +207,10 @@ class Grid {
     column.setCell(row, tile);
     return cell(row,col);
   }
+  void setCellType(int row, int col, TileType tileType) {
+    GridColumn column = columns[col];
+    column.cell(row).setTileType(tileType);
+  }
   GridColumn column(int col) {
     _checkCol(col);
     return columns[col];    
@@ -240,8 +245,11 @@ class Grid {
     }
     throw(MrMattException('MrMatt not found...'));
   }  
-  void playMutation(Mutation? mutation) {
-    if (mutation != null) {setCell(mutation.row,mutation.col,Tile(mutation.tileType));}
+  void moveTile(TileMove? tileMove) {
+    if (tileMove != null) {
+      cell(tileMove.rowStart,tileMove.colStart).setEmpty();
+      cell(tileMove.rowEnd,tileMove.colEnd).setTileType(tileMove.tileTypeEnd);
+      }
   }
   void dump() {
     if (kDebugMode) {
@@ -264,23 +272,35 @@ class Grid {
   }
 }
 
-class Mutation {
-  final int row;
-  final int col;
-  final TileType tileType;
-  Mutation({required this.row, required this.col, required this.tileType});
+class TileMove {
+  final int rowStart;
+  final int colStart;
+  final int rowEnd;
+  final int colEnd;
+  final TileType tileTypeEnd;
+  TileMove({required this.rowStart, required this.colStart, 
+            required this.rowEnd, required this.colEnd, required this.tileTypeEnd});
+  @override
+  String toString()=> 'move ($rowStart,$colStart) to ($rowEnd,$colEnd): $tileTypeEnd';  
 }
-
-class Mutations {
-  bool get isEmpty =>_mutations.isEmpty;
-  bool get isNotEmpty =>_mutations.isNotEmpty;
-  int get length =>_mutations.length;
-  final Queue<Mutation> _mutations = Queue<Mutation>();
-  void push(int row, int col, TileType tileType) {
-    _mutations.addLast(Mutation(row:row,col:col,tileType: tileType));
+class TileMoves {
+  bool get isEmpty =>_tileMoves.isEmpty;
+  bool get isNotEmpty =>_tileMoves.isNotEmpty;
+  int get length =>_tileMoves.length;
+  final Queue<TileMove> _tileMoves = Queue<TileMove>();
+  void push(int rowStart, int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) {
+    _tileMoves.addLast(TileMove(rowStart:rowStart, colStart:colStart, 
+                              rowEnd:rowEnd, colEnd:colEnd, tileTypeEnd: tileTypeEnd));
   }
-  Mutation? pop() =>_mutations.isNotEmpty?_mutations.removeFirst(): null;
-  void clear() =>_mutations.clear();
+  void add(TileMoves tileMoves) {
+    for (TileMove tileMove in tileMoves._tileMoves) {
+      _tileMoves.addLast(tileMove);
+    }
+  }
+  TileMove? pop() =>_tileMoves.isNotEmpty?_tileMoves.removeFirst(): null;
+  void clear() =>_tileMoves.clear();
+  TileMove? get first=>_tileMoves.first;
+  TileMove? get last=>_tileMoves.last;
 }
 
 

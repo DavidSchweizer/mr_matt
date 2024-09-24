@@ -5,11 +5,11 @@ import "../log.dart";
 class FallHandler {
   late Grid _grid;
   Grid get grid => _grid;
-  late Mutations _mutations;
-  Mutations get mutations =>_mutations;
-  FallHandler(Grid grid, Mutations mutations){
+  late TileMoves _tileMoves;
+  TileMoves get tileMoves =>_tileMoves;
+  FallHandler(Grid grid, TileMoves tileMoves){
     _grid = grid;
-    _mutations = mutations;
+    _tileMoves = tileMoves;
   }
   MoveResult handleAll(int row, int col) {
     MoveResult result = MoveResult.ok;
@@ -31,15 +31,17 @@ class FallHandler {
     logDebug('...End Dropping ALL  [$row,$col]: $result.');
     return result;
   }
-  void mutate(int row,int col,TileType tileType) {
-    mutations.push(row,col,tileType);
-    grid.setCell(row,col,Tile(tileType));
+  void moveTile(int rowStart,int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) {
+    tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileTypeEnd);
+    grid.cell(rowStart,colStart).setEmpty();
+    grid.setCell(rowEnd, colEnd, Tile(tileTypeEnd));
+    logDebug('moveTile(fallhandler): ${tileMoves.last}');
   }
 
   MoveResult _killedMrMatt(Tile tile) {
     assert(tile.isMrMatt());
       logDebug('Oh no...');
-      mutate(tile.row,tile.col, TileType.loser);
+      // mutate(tile.row,tile.col, TileType.loser);
       return MoveResult.killed;         
   }
   MoveResult handle(int row, int col, {bool initial=true}) {
@@ -80,12 +82,10 @@ class FallHandler {
 
   MoveResult? _dropOneRow(int row, int col, Tile tile, Tile below, [bool initial=true]) {   
     if (_emptyBelow(row,col,tile,below)) {
-      mutate(row,col,TileType.empty);
-      mutate(row+1,col,tile.tileType);
+      moveTile(row,col,row+1,col,tile.tileType);
       MoveResult result = handle(row+1,col, initial:false);
       if (result == MoveResult.invalid) {        
-        mutate(row+1,col, TileType.empty);
-        mutate(row,col,tile.tileType);
+        moveTile(row+1,col,row,col,tile.tileType);
         logDebug('...restored');
       }
       logDebug('end _emptyBelow $result');
@@ -97,8 +97,7 @@ class FallHandler {
              _bombBelow(row, col, tile, below) ||
              _rockBelow(row, col, tile, below)) {
       if (!initial && _testBomb(row,col,tile, below)) {
-        mutate(row,col,TileType.empty);
-        mutate(below.row,below.col,TileType.empty);
+        moveTile(row,col,below.row,below.col,TileType.empty);
       }
       if (below.isStone())
         {return _handleRockBelow(row,col,tile,below);}      
@@ -116,8 +115,7 @@ class FallHandler {
   bool _rockBelow(int row, int col, Tile tile, Tile below)=> _testBelow(row, col, tile, below, below.isStone, 'rock');
   bool _boxBelow(int row, int col, Tile tile, Tile below) {
     if (_testBelow(row, col, tile, below, below.isBox, 'box')) {
-      mutate(row,col,TileType.empty);
-      mutate(row+1,col,below.boxConsume(tile));
+      moveTile(row,col,row+1,col,below.boxConsume(tile));
       return true;
     }
     return false;
@@ -138,8 +136,9 @@ class FallHandler {
         return false;
       }
       logDebug('bomb EXPLODES! on ${below ?? "bottom"}');
-      if (below != null)
-        {mutate(row+1, col, TileType.empty);}
+      if (below != null) {
+        moveTile(row,col,row+1,col,TileType.empty);
+      }
       return true;      
   }
   MoveResult? _handleRockBelow(row,col,tile,Tile below) {
@@ -163,14 +162,12 @@ class FallHandler {
     logDebug('...handling side for [$row,$col] $tile | side [$row,${col+delta} $side | sidebelow [${row+1},${col+delta}] $sideBelow');
     if (side != null && side.isEmpty() && sideBelow != null) {
       if (sideBelow.isEmpty()){      
-        mutate(row,col,TileType.empty);
-        mutate(row,col+delta,tile.tileType);
+        moveTile(row,col,row,col+delta,tile.tileType);
         logDebug('...continue handling side');
         return handle(row,col+delta,initial:false);
       }
       else if (sideBelow.isMrMatt()) {
-        mutate(row,col,TileType.empty);
-        mutate(row,col+delta,tile.tileType);
+        moveTile(row,col,row,col+delta,tile.tileType);
         return _killedMrMatt(sideBelow);
       }
     }
