@@ -1,4 +1,6 @@
 // ignore: unused_import
+import "dart:collection";
+
 import "package:flutter/material.dart";
 
 import "matt_grid.dart";
@@ -11,7 +13,7 @@ class FallHandler {
   late TileMoves _tileMoves;
   TileMoves get tileMoves =>_tileMoves;
   late Function()? _callback;
-  final bool _detailedLog = false;
+  final bool _detailedLog = true;
 
   void _log(String s){ 
     if (_detailedLog) logDebug(s);
@@ -21,25 +23,53 @@ class FallHandler {
     _tileMoves = tileMoves;
     _callback = callback;
   }
+  Queue<int> _findDropTiles(int row, int col) {
+    Queue<int> result = Queue<int>();
+    while (GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) {
+      result.addLast(row);
+      row--;
+    }
+    String ss = '-- drop tiles ($row,$col):';
+    if (result.isEmpty) {ss += 'none';}
+    else {
+      for (int row2 in result) {
+        ss += ' $row2';
+      }
+    }
+    logDebug(ss);
+    return result;
+  }
+  
   MoveResult handleAll(int row, int col) {
     MoveResult result = MoveResult.ok;
-    // bool first = true;    
     _log('Dropping ALL [$row,$col] ${grid.cell(row,col)}');
-    while (//result != MoveResult.killed && result != MoveResult.finish && 
-          GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) { 
-      MoveResult temResult = handle(row,col);
-      _log('\tdropped one [$row,$col] ${grid.cell(row,col)}: $temResult.');
+    Queue<int> tilesToDrop = _findDropTiles(row,col);
+    while (tilesToDrop.isNotEmpty && result == MoveResult.ok) {
+      int stoneRow = tilesToDrop.removeFirst();
+      MoveResult temResult = handleOne(stoneRow, col);
+      _log('\thandled ($stoneRow,$col) $temResult.');
       if (result == MoveResult.ok && temResult != MoveResult.ok) {
         result = temResult;
       }
-      // if (result == MoveResult.ok && (!first && GridConst.isTop(row))) {break;}
-      // first = false;
-      // if (GridConst.isTop(row)) {break;} else {row -=1;}
-      row -=1;
-    } 
-    _log('...End Dropping ALL  [$row,$col]: $result.');
+    }
     return result;
   }
+
+  //   while (//result != MoveResult.killed && result != MoveResult.finish && 
+  //         GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) { 
+  //     MoveResult temResult = handle(row,col);
+  //     _log('\tdropped one [$row,$col] ${grid.cell(row,col)}: $temResult.');
+  //     if (result == MoveResult.ok && temResult != MoveResult.ok) {
+  //       result = temResult;
+  //     }
+  //     // if (result == MoveResult.ok && (!first && GridConst.isTop(row))) {break;}
+  //     // first = false;
+  //     // if (GridConst.isTop(row)) {break;} else {row -=1;}
+  //     row -=1;
+  //   } 
+  //   _log('...End Dropping ALL  [$row,$col]: $result.');
+  //   return result;
+  // }
   
   void _doCallBack(){
     if (_callback != null) {
@@ -47,45 +77,109 @@ class FallHandler {
       // await Future.delayed(Durations.short1);
     }
   }
-  void moveTile(int rowStart,int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) async {
+  void moveTile(int rowStart, int colStart, int rowEnd, int colEnd, [TileType? tileTypeEnd]) async {
+    TileType tileType = tileTypeEnd??grid.cell(rowStart,colStart).tileType;
     grid.cell(rowStart,colStart).setEmpty();
-    grid.setCell(rowEnd, colEnd, Tile(tileTypeEnd));
-    tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileTypeEnd);
+    grid.setCell(rowEnd, colEnd, Tile(tileType));
+    tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileType);
     logDebug('moveTile(fallhandler): ${tileMoves.last}');
     _doCallBack();
   }
 
-  MoveResult _killedMrMatt(Tile tile) {
-    assert(tile.isMrMatt());
-      _log('Oh no...');
-      // mutate(tile.row,tile.col, TileType.loser);
-      return MoveResult.killed;         
+  int _findEndRow(int row, int col) {
+    int result = row+1;
+    while (GridConst.isGridRow(result) && grid.cell(result,col).isEmpty()) { 
+      result++;
+    }
+    return GridConst.isGridRow(result) ? result : result-1;
   }
-  MoveResult handle(int row, int col, {bool initial=true}) {
-    // how movable object at [row,col] drops
+
+  MoveResult _dropToBottom(Tile tile) {
+    _log('--- END drop (at bottom)');
+    if (_testBomb2(tile, null)) {
+      moveTile(tile.row,tile.col,GridConst.bottomRow, tile.col, TileType.empty);
+    }
+    else {
+      moveTile(tile.row,tile.col,GridConst.bottomRow, tile.col);
+    }
+    return MoveResult.ok;
+  }
+
+  bool _testBomb2(Tile tile, Tile? below) {
+      if (!tile.isBomb())
+        {return false;}
+      if (below != null && below.isBombFree()) {
+        //note: if below is a box, the box will swallow the bomb
+        _log('bomb will not explode on $below.');
+        return false;
+      }
+      _log('bomb EXPLODES! on ${below ?? "bottom"}');
+      return true;      
+  }
+
+  MoveResult handleOne(int row, int col, [bool initial=true]) {
     assert (GridConst.isGridRow(row) && GridConst.isGridCol(col));
     Tile tile = Tile.copy(grid.cell(row,col));
-    if (!tile.isMovable()){
-      _log('tile at $row,$col ($tile) is not movable');
+    assert(tile.isMovable());
+    int rowEnd = _findEndRow(row,col);
+    _log('START drop [$row,$col]->[$rowEnd,$col] ($tile)');
+    if (GridConst.isBottom(rowEnd)){ return _dropToBottom(tile);}
+    Tile below = grid.cell(rowEnd+1,col);
+    _log('Below [$rowEnd,$col] $below');
+    if (below.isMrMatt()) {return _killedMrMatt(tile,below);}
+    return _handleLanding(tile, below);
+  }
+
+  MoveResult _handleMrMatt(Tile tile, Tile below) {
+    assert(below.isMrMatt()); 
+    _log('Oh no...');
+    moveTile(tile.row,tile.col, below.row-1,below.col);
+    return MoveResult.killed;
+  }
+  MoveResult _handleBox(Tile tile, Tile below) {
+      _log('...boxing $tile $below');
+      moveTile(tile.row,tile.col,below.row,below.col,Tile.boxConsume(below));
       return MoveResult.ok;
+  }
+  MoveResult _handleLanding(Tile tile, Tile below) {
+    Map<TileType,int Function(Tile,Tile)> = {
+      TileType.mrMatt: _handleMrMatt,
+      TileType.box1: _handleBox,
+      TileType.box2: _handleBox,
+      TileType.box3: _handleBox,
+
     }
-    _doCallBack();
-    _log('START drop [$row,$col] ($tile)');
-    if (GridConst.isBottom(row)){
-      _log('--- END drop (at bottom)');
-      if (!initial) {
-        _testBomb(row, col, tile, null);
+    
+    MoveResult result = MoveResult.ok;
+    if (_testBomb2(tile, below)){
+      _log('...exploding bomb $tile $below');
+      moveTile(tile.row,tile.col,below.row,below.col,TileType.empty);
+    } 
+    else if (below.isConsumable() || below.isWall()) {
+      _log('...landing on food, wall or grass ($below)');
+      moveTile(tile.row,tile.col,below.row-1,below.col);
+    }
+    else if (below.isBox()) {
+    }
+    
+    else if (_wallBelow(row, col, tile, below) || 
+             _consumableBelow(row, col, tile, below) ||
+             _boxBelow(row, col, tile, below) ||
+             _bombBelow(row, col, tile, below) ||
+             _rockBelow(row, col, tile, below)) {
+      if (!initial && _testBomb(row,col,tile, below)) {
+        moveTile(row,col,below.row,below.col,TileType.empty);
       }
-      return MoveResult.ok;
+      if (below.isStone())
+        {return _handleRockBelow(row,col,tile,below);}      
+      else
+        {return MoveResult.ok;}
     }
-    _doCallBack();
-    Tile below = grid.cell(row+1,col);
-    _log('Below [${row+1},$col] $below');        
-    if (!initial && below.isMrMatt()) {
-      return _killedMrMatt(below);
-    }
+
+
+
     try {
-      MoveResult? result = _dropOneRow(row, col, tile, below, initial);
+      MoveResult? result = _dropTile(tile, below);
       _doCallBack();
       if (result == null){
         _log('--- END drop (restoring the tile)');
@@ -100,7 +194,32 @@ class FallHandler {
     }
   }
 
-  MoveResult? _dropOneRow(int row, int col, Tile tile, Tile below, [bool initial=true]) {   
+  }
+  MoveResult handle(int row, int col, {bool initial=true}) {
+    // how movable object at [row,col] drops
+    assert (GridConst.isGridRow(row) && GridConst.isGridCol(col));
+    Tile tile = Tile.copy(grid.cell(row,col));
+    if (!tile.isMovable()){
+      _log('tile at $row,$col ($tile) is not movable');
+      return MoveResult.ok;
+    }
+    _doCallBack();
+    try {
+      MoveResult? result = _dropTile(tile, below, initial);
+      _doCallBack();
+      if (result == null){
+        _log('--- END drop (restoring the tile)');
+        grid.setCell(row,col, tile); 
+        return MoveResult.invalid;
+      }
+      return result;
+    }
+    on Exception catch(e) {
+      logDebug('oops... $e');
+      return MoveResult.invalid;
+    }
+  }
+  MoveResult _dropTile(Tile tile, Tile below, [bool initial=true]) {
     if (_emptyBelow(row,col,tile,below)) {
       moveTile(row,col,row+1,col,tile.tileType);
       MoveResult result = handle(row+1,col, initial:false);

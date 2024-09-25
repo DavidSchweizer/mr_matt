@@ -107,35 +107,37 @@ class Tile {
   void setGrass()=>setTileType(TileType.grass);
   void setFood()=>setTileType(TileType.food);
   void setLoser()=>setTileType(TileType.loser);
-  TileType boxConsume(Tile tile) {
-    assert (isBox());
-    TileType newType;
-    if (tileType == TileType.box3) {newType=TileType.box2;}
-    else if (tileType == TileType.box2) {newType=TileType.box1;}
-    else if (tileType == TileType.box1) {newType=TileType.empty;}
-    else {throw(MrMattException('Unexpected tiletype "$tile"'));}
-    return newType;  
+  static TileType boxConsume(Tile tile) {
+    const Map<TileType,TileType> rules = {TileType.box3: TileType.box2, 
+                                          TileType.box2: TileType.box1, 
+                                          TileType.box1: TileType.empty};
+    assert (tile.isBox());
+    if (rules.keys.contains(tile.tileType)){return rules[tile.tileType]!;}
+    throw(MrMattException('Unexpected tiletype for box "$tile"'));
   }
 }
 
 class GridConst{
   static const mattHeight = 18;
   static const mattWidth  = 31;
-  static bool isGridRow(int row)=>row >=0 && row < mattHeight;
-  static bool isGridCol(int col)=>col >=0 && col < mattWidth;
+  static const bottomRow = mattHeight-1;
+  static const topRow = 0;
+  static const leftCol = 0;
+  static const rightCol = mattWidth-1;
+  static bool isGridRow(int row)=>row >=topRow && row<=bottomRow;
+  static bool isGridCol(int col)=>col >=leftCol && col<=rightCol;
   static bool isGridRowCol(int row, int col)=>isGridRow(row) && isGridCol(col);
-  static bool isTop(int row)=> row==0;
-  static bool isBottom(int row)=> row==mattHeight-1;
-  static bool isLeft(int col)=> col==0;
-  static bool isRight(int col)=> col==mattWidth-1;
-  
-  static Iterable<int> rowRange([int start = 0,int end=mattHeight]) sync* {
-    for (int row = start; row < end; row++) {
+  static bool isTop(int row)=> row==topRow;
+  static bool isBottom(int row)=> row==bottomRow;
+  static bool isLeft(int col)=> col==leftCol;
+  static bool isRight(int col)=> col==rightCol;
+  static Iterable<int> rowRange([int start = topRow,int end=bottomRow]) sync* {
+    for (int row = start; row <= end; row++) {
       yield row;
     }
   }
-  static Iterable<int> colRange([int start = 0,int end=mattWidth]) sync* {
-    for (int col = start; col < end; col++) {
+  static Iterable<int> colRange([int start = leftCol,int end=rightCol]) sync* {
+    for (int col = start; col <= end; col++) {
       yield col;
     }
   }
