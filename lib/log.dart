@@ -29,3 +29,5 @@ void logInfo(String line) {
 void logDebug(String line) {
   logger.d(line);
 }
+
+String nowString([String format='HH:mm:ss'])=> DateFormat(format).format(DateTime.now());

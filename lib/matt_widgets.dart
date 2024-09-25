@@ -68,10 +68,12 @@ class MattGridState extends State<MattGridWidget> {
     return Column(children:children);
   }
   Widget buildGrid() {
+    logDebug('BBB: start build (grid)  {${nowString('HH:mm:ss.S')}}');
     List<Column> columns = [];
     for (int col in GridConst.colRange()) {
       columns.add(buildColumn(col));
     }
+    logDebug('BBB: end build (grid) {${nowString('HH:mm:ss.S')}}');
     return Row(children: columns);
   }
   @override

@@ -150,7 +150,8 @@ class _MrMattHomeState extends State<MrMattHome> {
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
     // grid ??= game == null ? null : Grid.copy(game!.grid);
-    // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}      
+    // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}   
+    logDebug('BBB: start build (main) {${nowString('HH:mm:ss.S')}}');
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -379,18 +380,20 @@ class _MrMattHomeState extends State<MrMattHome> {
   
   void _checkPlaybackMove() async {
     if (tileMoves == null || tileMoves!.isEmpty) {
-      // logDebug('no tile moves available {${DateTime.now()}}');
+      // logDebug('no tile moves available {${nowString()}}');
       return;
     }
     else {
-      logDebug('moving tiles {${DateTime.now()}} (${tileMoves!.length})');
+      logDebug('moving tiles {${nowString('HH:mm:ss.S')}} (${tileMoves!.length})');
       TileMove tileMove = tileMoves!.pop()!;
-      setState(() 
-      { grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
-        grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
-        }
-      );
-      logDebug('end moving tiles {${DateTime.now()}}');
+      if (tileMove.tileTypeEnd == TileType.mrMatt) {
+        logDebug('... moving MrMatt ...');
+        // await Future.delayed(Durations.long4);
+      }
+      grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
+      grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
+      setState(() {});
+      logDebug('end moving tiles {${nowString('HH:mm:ss.S')}}');
       await Future.delayed(Durations.short1);
     }
   }
@@ -409,9 +412,9 @@ class _MrMattHomeState extends State<MrMattHome> {
     // result = await game!.performMove(move, repeat);
     // Future <MoveResult> result;
     MoveResult? result;
-    logDebug('///scheduliting {${DateTime.now()}}');
+    logDebug('///scheduliting {${nowString('HH:mm:ss.S')}}');
     scheduleMicrotask(() async {result = await game!.performMove(move, repeat); _afterMove(result??MoveResult.invalid);});
-    logDebug('///scheduled {${DateTime.now()}}');
+    logDebug('///scheduled {${nowString('HH:mm:ss.S')}}');
     // tileMoves.add(game!.tileMoves);
     // 
     // setState(() {

@@ -1,4 +1,5 @@
 import "dart:collection";
+// ignore: unused_import
 import "package:flutter/material.dart";
 import "package:mr_matt/log.dart";
 
@@ -184,7 +185,7 @@ class MattGame {
     mrMatt = RowCol(row,col);   
     moveTile(oldRow, oldCol, row, col, TileType.mrMatt);
     // grid.cell(mrMatt.row, mrMatt.col).setEmpty();
-    logDebug('Moved mrMatt to $mrMatt');
+    logDebug('Moved mrMatt to $mrMatt {${nowString('HH:mm:ss.S')}}');
   }
   MoveResult _moveObject(int row, int col, Move move, FallHandler handler) {
     assert (isHorizontalMove(move));
@@ -199,7 +200,7 @@ class MattGame {
     
   Future<MoveResult> performMove(Move move, [int repeat = 0]) async {
   // MoveResult performMove(Move move, [int repeat = 0]) {
-    logDebug('Start perform move {${DateTime.now()}} ($move) target ($move) repeat:$repeat');    
+    logDebug('Start perform move {${nowString('HH:mm:ss.S')}} ($move) target ($move) repeat:$repeat');    
     if (!canMove(move)) {
       logDebug('--- invalid move');    
       return MoveResult.invalid;
@@ -222,7 +223,7 @@ class MattGame {
     }
     // playTileMoves(); // for now, should be done in interface to simulate movement
     takeSnapshot(startGrid, move, result, performed-1, mrMatt);
-    logDebug('SNAPSHOT: end performMove {${DateTime.now()}} ($result): repeat = ${lastMove!.repeat}');
+    logDebug('SNAPSHOT: end performMove {${nowString('HH:mm:ss.S')}} ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
@@ -279,18 +280,21 @@ class MattGame {
     mrMatt = grid.findMrMatt(); 
     return lastSnapshot.nrMoves;
   }
+  void _doCallBack() {
+    if (callback != null) {
+        // await Future.delayed(Durations.short1);
+        // logDebug('before callback');
+        callback!();
+        // logDebug('after callback');
+        // await Future.delayed(Durations.short1);
+      }
+  }
   void moveTile(int rowStart,int colStart,int rowEnd,int colEnd,TileType tileTypeEnd) async {
     grid.cell(rowStart,colStart).setEmpty();
     grid.cell(rowEnd,colEnd).setTileType(tileTypeEnd);
     tileMoves.push(rowStart,colStart,rowEnd,colEnd,tileTypeEnd);
     logDebug('moveTile: ${tileMoves.last} (van ${tileMoves.length})  callback: $callback');
-    if (callback != null) {
-        // await Future.delayed(Durations.short1);
-        logDebug('before callback');
-        callback!();
-        logDebug('after callback');
-        // await Future.delayed(Durations.short1);
-      }
+    _doCallBack();
     }
   // Future<MoveResult> playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) async {
   //   MoveResult result = MoveResult.invalid;

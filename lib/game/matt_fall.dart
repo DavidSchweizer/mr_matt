@@ -1,3 +1,4 @@
+// ignore: unused_import
 import "package:flutter/material.dart";
 
 import "matt_grid.dart";
@@ -40,15 +41,18 @@ class FallHandler {
     return result;
   }
   
+  void _doCallBack(){
+    if (_callback != null) {
+      _callback!();
+      // await Future.delayed(Durations.short1);
+    }
+  }
   void moveTile(int rowStart,int colStart, int rowEnd, int colEnd, TileType tileTypeEnd) async {
     grid.cell(rowStart,colStart).setEmpty();
     grid.setCell(rowEnd, colEnd, Tile(tileTypeEnd));
     tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileTypeEnd);
     logDebug('moveTile(fallhandler): ${tileMoves.last}');
-    if (_callback != null) {
-      _callback!();
-      // await Future.delayed(Durations.short1);
-    }
+    _doCallBack();
   }
 
   MoveResult _killedMrMatt(Tile tile) {
@@ -65,6 +69,7 @@ class FallHandler {
       _log('tile at $row,$col ($tile) is not movable');
       return MoveResult.ok;
     }
+    _doCallBack();
     _log('START drop [$row,$col] ($tile)');
     if (GridConst.isBottom(row)){
       _log('--- END drop (at bottom)');
@@ -73,6 +78,7 @@ class FallHandler {
       }
       return MoveResult.ok;
     }
+    _doCallBack();
     Tile below = grid.cell(row+1,col);
     _log('Below [${row+1},$col] $below');        
     if (!initial && below.isMrMatt()) {
@@ -80,6 +86,7 @@ class FallHandler {
     }
     try {
       MoveResult? result = _dropOneRow(row, col, tile, below, initial);
+      _doCallBack();
       if (result == null){
         _log('--- END drop (restoring the tile)');
         grid.setCell(row,col, tile); 
