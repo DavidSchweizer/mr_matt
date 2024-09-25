@@ -193,7 +193,7 @@ class MattGame {
     assert (grid.cell(row,targetCol).isEmpty());
     _log('moving object at [$row,$col] to $targetCol');
     moveTile(row, col, row, targetCol, grid.cell(row,col).tileType);
-    MoveResult dropResult = handler.handle(row, targetCol);    
+    MoveResult dropResult = handler.handleAll(row, targetCol);    
     _log('dropResult: $dropResult');
     return dropResult;
   }

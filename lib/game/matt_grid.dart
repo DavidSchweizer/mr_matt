@@ -62,6 +62,9 @@ class Tile {
   String toString() { 
     return '<${tileType.name}>';
   }
+  String dbgString(){
+    return '($row,$col):<${tileType.name}>';
+  }
   String dumpStr() {
     switch (tileType){
       case TileType.empty: return '  ';
