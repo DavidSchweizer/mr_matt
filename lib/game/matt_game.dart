@@ -193,7 +193,7 @@ class MattGame {
     assert (grid.cell(row,targetCol).isEmpty());
     _log('moving object at [$row,$col] to $targetCol');
     moveTile(row, col, row, targetCol, grid.cell(row,col).tileType);
-    MoveResult dropResult = handler.handleAll(row, targetCol);    
+    MoveResult dropResult = handler.handleAll(row, targetCol, move);    
     _log('dropResult: $dropResult');
     return dropResult;
   }
@@ -250,7 +250,7 @@ class MattGame {
     moveMrMatt(target.row, target.col);
     if (!GridConst.isTop(currentRow) && isHorizontalMove(move)) {
       _log('dropping [${currentRow-1},$currentCol]');
-      result = handler.handleAll(currentRow-1, currentCol);
+      result = handler.handleAll(currentRow-1, currentCol, move);
       _log('--- dropping result is $result');
     }
     if (nrFood == 0) {

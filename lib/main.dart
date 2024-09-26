@@ -400,7 +400,7 @@ class _MrMattHomeState extends State<MrMattHome> {
         grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
       });
       logDebug('end moving tiles {${nowString('HH:mm:ss.S')}}');
-      await Future.delayed(Durations.short1);
+      await Future.delayed(Durations.long1);
     }
   }
 
