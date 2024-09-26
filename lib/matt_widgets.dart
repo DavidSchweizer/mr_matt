@@ -117,7 +117,8 @@ class MattFileState extends State<MattGameLevelWidget>  {
 class MattLevelSelector extends StatefulWidget {
   final MattFile? file;
   final Function(int level)?levelSelected;
-  const MattLevelSelector({super.key, this.file, this.levelSelected}); 
+  final int? selected;
+  const MattLevelSelector({super.key, this.file, this.levelSelected, this.selected}); 
 
   @override
   State<StatefulWidget> createState() => _MattLevelState();
@@ -131,8 +132,18 @@ class _MattLevelState extends State<MattLevelSelector>{
       );
   }
 
-  Widget _getLevelButton(int level, bool enabled) {
-    return ElevatedButton(onPressed: enabled ? () { widget.levelSelected!(level);} : null, child: Text((level+1).toString()));
+  Widget _getLevelButton(int level, bool enabled, bool selected) {
+    if (selected) {
+      return ElevatedButton(onPressed: enabled ? () { widget.levelSelected!(level);} : null, 
+                            style: ElevatedButton.styleFrom(side: const BorderSide(color: Colors.black54, width:2)),
+                            child: Text((level+1).toString())
+                          );
+    }
+    else {
+      return ElevatedButton(onPressed: enabled ? () { widget.levelSelected!(level);} : null, 
+                            child: Text((level+1).toString())
+                          );
+    }
   }
   List<Widget> _getLevelButtons(context) {
     List<Widget> result = [];
@@ -144,7 +155,7 @@ class _MattLevelState extends State<MattLevelSelector>{
     }
     else{
       for (int level = 0; level < widget.file!.nrLevels; level++){
-        result.add(_getLevelButton(level, widget.file!.levels[level].accessible));
+        result.add(_getLevelButton(level, widget.file!.levels[level].accessible, level==widget.selected));
       }          
     }
     return result;

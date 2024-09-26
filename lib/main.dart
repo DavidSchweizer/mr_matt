@@ -223,7 +223,7 @@ class _MrMattHomeState extends State<MrMattHome> {
                 const SizedBox(
                   width: 10,
                 ),
-            MattLevelSelector(file: selectedFile, levelSelected: _selectLevel,),
+            MattLevelSelector(file: selectedFile, levelSelected: _selectLevel, selected:currentLevel),
               ]
               )
         ),
