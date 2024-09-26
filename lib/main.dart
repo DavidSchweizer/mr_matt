@@ -345,19 +345,24 @@ class _MrMattHomeState extends State<MrMattHome> {
     _startGame(selectedFile, level);
   }
 
+  void _initGame(MattGame newGame) {
+      game=newGame; 
+      grid=Grid.copy(game!.grid);
+      tileMoves = game!.tileMoves;
+      tileMoves!.clear();
+      movesQueue.clear();
+  }
+
   void _startGame(MattFile? mattFile, int level) {
     if (mattFile == null || level > mattFile.highestLevel()) {return;}
     grid = null;
-    MattGame newGame = MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title, callback: _checkPlaybackMove);
+    _initGame(MattGame(mattFile.levels[level].grid, level: level, title: mattFile.title, callback: _checkPlaybackMove));
     stopwatch.reset();
     stopwatch.start();
     setState(() {
       _counter = 0;
       selectedFile=mattFile;
       currentLevel = level;
-      game=newGame; 
-      grid=Grid.copy(game!.grid);
-      tileMoves = game!.tileMoves;
     });
   }
   void startNewGame(MattFile? newFile) {
@@ -390,9 +395,10 @@ class _MrMattHomeState extends State<MrMattHome> {
         logDebug('... moving MrMatt ...');
         // await Future.delayed(Durations.long4);
       }
-      grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
-      grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
-      setState(() {});
+      setState(() {
+        grid!.setCellType(tileMove.rowStart,tileMove.colStart, TileType.empty);
+        grid!.setCellType(tileMove.rowEnd,tileMove.colEnd, tileMove.tileTypeEnd);
+      });
       logDebug('end moving tiles {${nowString('HH:mm:ss.S')}}');
       await Future.delayed(Durations.short1);
     }
@@ -462,6 +468,8 @@ class _MrMattHomeState extends State<MrMattHome> {
     if (game==null || _counter == 0) {return;}      
     setState(() {      
       _counter -= game!.undoLast();
+      movesQueue.clear();
+      tileMoves!.clear();
       grid = Grid.copy(game!.grid);
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
@@ -471,11 +479,8 @@ class _MrMattHomeState extends State<MrMattHome> {
     setState(() {    
           stopwatch.reset();         
           int newLevel = currentLevel??0;
-          game = MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title, callback:_checkPlaybackMove); 
-          grid = Grid.copy(game!.grid);
+          _initGame(MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title, callback:_checkPlaybackMove));
           _counter = 0;
-          movesQueue.clear();
-          tileMoves!.clear();
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {

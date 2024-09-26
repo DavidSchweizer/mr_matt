@@ -162,40 +162,50 @@ class FallHandler {
     _log('handling stone {${below.dbgString()}} below ${tile.dbgString()}');
     moveTile(tile.row,tile.col, below.row-1, below.col); 
     tile = Tile.copy(grid.cell(below.row-1,below.col));
-    // note: depending on mrMatt's move?
+    // note: volgorde depending on mrMatt's move?
     _log('=== try left ===');
     MoveResult? result = _handleSide(-1, tile, GridConst.isLeft);
     if (result!=null) {
       _log('=== end handling stone below >left<: $result');
+      
       return result;
     }
     _log('=== try right ===');
     result = _handleSide(1, tile, GridConst.isRight);
     _log('=== end handling rock below >right<: $result');
-    return result ?? MoveResult.ok; // if not left or right it can stay where it is!
+
+    return result ?? MoveResult.ok; 
   }
 
   MoveResult? _handleSide(int delta, Tile tile, bool Function(int) borderTest){
     Tile? side = borderTest(tile.col)?null:grid.cell(tile.row,tile.col+delta);
     Tile? sideBelow = borderTest(tile.col)?null:grid.cell(tile.row+1,tile.col+delta);    
     _log('...handling side for ${tile.dbgString()} | side [${tile.row},${tile.col+delta} $side | sidebelow [${tile.row+1},${tile.col+delta}] $sideBelow');
-    if (side == null || !side.isEmpty() || sideBelow == null) {
-      _log('--- not possible ---');
+    if (side != null && !side.isEmpty() || sideBelow == null) {
+      _log('no: ${sideBelow==null || side==null ?"at the border":"something blocking"}...');
       return null;
-    }
-    _log('--- can drop further to this side...');
-    assert (grid.cell(tile.row,tile.col+delta).isEmpty());
-    grid.cell(tile.row,tile.col+delta).setStone();
-    grid.cell(tile.row,tile.col).setEmpty();
-    MoveResult result = handleOne(tile.row,tile.col+delta);
-    if (result == MoveResult.ok) {
-      _log('yes, handled side kick');
     } 
-    else {
-      _log('no, did not handle side kick. reverting');
-      grid.cell(tile.row,tile.col+delta).setEmpty();
-      grid.cell(tile.row,tile.col).setStone();
+    MoveResult result = MoveResult.ok;
+    if (!sideBelow.isEmpty()) {
+      if (sideBelow.isMrMatt()) {
+        moveTile(tile.row,tile.col, tile.row,tile.col+delta);
+        result = MoveResult.killed;
+        _log('oh-No-No-No...');
+      }
+      else if (sideBelow.isBox()){
+        throw(MrMattException('boxyboxy not implemented'));
+      }
+      else {
+        _log('--- end of drop, already something on this side ---');       
+      }
     }
+    else {
+      assert (sideBelow.isEmpty());
+      _log('--- can drop further to this side...');
+      moveTile(tile.row,tile.col, tile.row,tile.col+delta);
+      result = handleOne(tile.row,tile.col+delta);
+    }
+    _log('handled side kick. $result');
     return result;
   }
 }
