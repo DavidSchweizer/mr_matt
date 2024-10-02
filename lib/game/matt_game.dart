@@ -1,8 +1,7 @@
 import "dart:collection";
 // ignore: unused_import
 import "package:flutter/material.dart";
-import "package:mr_matt/log.dart";
-
+import "../utils/log.dart";
 import "matt_grid.dart";
 import "matt_fall.dart";
 
@@ -107,7 +106,7 @@ class MattGame {
   }
 
   bool _moveValid(int row,int col) {    
-    if (!GridConst.isGridRowCol(row,col)) return false;      
+    if (!GC.isGridRowCol(row,col)) return false;      
 
     int rowStep = (row-mrMatt.row).abs(); // should be 0 or 1
     int colStep = (col-mrMatt.col).abs(); // should be 0 or 1
@@ -121,7 +120,7 @@ class MattGame {
     assert (row == mrMatt.row);
     assert ((col-mrMatt.col).abs() == 1);
     int nextCol = col + col - mrMatt.col;
-    if (!GridConst.isGridCol(nextCol)) {
+    if (!GC.isGridCol(nextCol)) {
       _log('---at border');    
       return false;
     }
@@ -177,7 +176,7 @@ class MattGame {
   }
   void moveMrMatt(int row, int col) {
     if (grid.cell(row,col).isFood()) {
-      logDebug('--- hap! ($row,$col)');
+      _log('--- hap! ($row,$col)');
       nrFood -= 1;
     }
     int oldRow = mrMatt.row;
@@ -185,7 +184,7 @@ class MattGame {
     mrMatt = RowCol(row,col);   
     moveTile(oldRow, oldCol, row, col, TileType.mrMatt);
     // grid.cell(mrMatt.row, mrMatt.col).setEmpty();
-    logDebug('Moved mrMatt to $mrMatt {${nowString('HH:mm:ss.S')}}');
+    _log('Moved mrMatt to $mrMatt {${nowString('HH:mm:ss.S')}}');
   }
   MoveResult _moveObject(int row, int col, Move move, FallHandler handler) {
     assert (isHorizontalMove(move));
@@ -200,9 +199,9 @@ class MattGame {
     
   Future<MoveResult> performMove(Move move, [int repeat = 0]) async {
   // MoveResult performMove(Move move, [int repeat = 0]) {
-    logDebug('Start perform move {${nowString('HH:mm:ss.S')}} ($move) target ($move) repeat:$repeat');    
+    _log('Start perform move {${nowString('HH:mm:ss.S')}} ($move) target ($move) repeat:$repeat');    
     if (!canMove(move)) {
-      logDebug('--- invalid move');    
+      _log('--- invalid move');    
       return MoveResult.invalid;
     }
     FallHandler handler = FallHandler(grid, tileMoves, callback);
@@ -223,7 +222,7 @@ class MattGame {
     }
     // playTileMoves(); // for now, should be done in interface to simulate movement
     takeSnapshot(startGrid, move, result, performed-1, mrMatt);
-    logDebug('SNAPSHOT: end performMove {${nowString('HH:mm:ss.S')}} ($result): repeat = ${lastMove!.repeat}');
+    _log('SNAPSHOT: end performMove {${nowString('HH:mm:ss.S')}} ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
@@ -248,7 +247,7 @@ class MattGame {
       }
     }    
     moveMrMatt(target.row, target.col);
-    if (!GridConst.isTop(currentRow) && isHorizontalMove(move)) {
+    if (!GC.isTop(currentRow) && isHorizontalMove(move)) {
       _log('dropping [${currentRow-1},$currentCol]');
       result = handler.handleAll(currentRow-1, currentCol, move);
       _log('--- dropping result is $result');
@@ -264,7 +263,7 @@ class MattGame {
       switch (move) {
         case Move.up: 
         case Move.down: {
-          if (GridConst.isTop(mrMatt.row)) return false;
+          if (GC.isTop(mrMatt.row)) return false;
           Tile cell = grid.cell(mrMatt.row-1,mrMatt.col);
           return cell.isMovable();
         }
@@ -293,7 +292,7 @@ class MattGame {
     grid.cell(rowStart,colStart).setEmpty();
     grid.cell(rowEnd,colEnd).setTileType(tileTypeEnd);
     tileMoves.push(rowStart,colStart,rowEnd,colEnd,tileTypeEnd);
-    logDebug('moveTile: ${tileMoves.last} (van ${tileMoves.length})  callback: $callback');
+    _log('moveTile: ${tileMoves.last} (van ${tileMoves.length})  callback: $callback');
     _doCallBack();
     }
   // Future<MoveResult> playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) async {

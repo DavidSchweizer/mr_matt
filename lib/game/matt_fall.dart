@@ -4,9 +4,9 @@ import "dart:collection";
 // ignore: unused_import
 import "package:flutter/material.dart";
 
+import "../utils/log.dart";
 import "matt_grid.dart";
 import "matt_game.dart";
-import "../log.dart";
 
 class FallHandler {
   late Grid _grid;
@@ -14,7 +14,7 @@ class FallHandler {
   late TileMoves _tileMoves;
   TileMoves get tileMoves =>_tileMoves;
   late Function()? _callback;
-  final bool _detailedLog = true;
+  final bool _detailedLog = false;
 
   void _log(String s){ 
     if (_detailedLog) logDebug(s);
@@ -26,7 +26,7 @@ class FallHandler {
   }
   Queue<int> _findDropTiles(int row, int col) {
     Queue<int> result = Queue<int>();
-    while (GridConst.isGridRow(row) && grid.cell(row,col).isMovable()) {
+    while (GC.isGridRow(row) && grid.cell(row,col).isMovable()) {
       result.addLast(row);
       row--;
     }
@@ -74,19 +74,19 @@ class FallHandler {
 
   int _findEndRow(int row, int col) {
     int result = row+1;
-    while (GridConst.isGridRow(result) && grid.cell(result,col).isEmpty()) { 
+    while (GC.isGridRow(result) && grid.cell(result,col).isEmpty()) { 
       result++;
     }
-    return /*GridConst.isGridRow(result) ? result : */ result-1;
+    return /*GC.isGridRow(result) ? result : */ result-1;
   }
 
   MoveResult _dropToBottom(Tile tile) {
     _log('--- END drop (at bottom)');
     if (_testBomb2(tile, null)) {
-      moveTile(tile.row,tile.col,GridConst.bottomRow, tile.col, TileType.empty);
+      moveTile(tile.row,tile.col,GC.bottomRow, tile.col, TileType.empty);
     }
     else {
-      moveTile(tile.row,tile.col,GridConst.bottomRow, tile.col);
+      moveTile(tile.row,tile.col,GC.bottomRow, tile.col);
     }
     return MoveResult.ok;
   }
@@ -104,12 +104,12 @@ class FallHandler {
   }
 
   MoveResult handleOne(int row, int col, Move move) {
-    assert (GridConst.isGridRow(row) && GridConst.isGridCol(col));
+    assert (GC.isGridRow(row) && GC.isGridCol(col));
     Tile tile = Tile.copy(grid.cell(row,col));
     assert(tile.isMovable());
     int rowEnd = _findEndRow(row,col);
     _log('START drop [$row,$col]->[$rowEnd,$col] ($tile)');
-    if (GridConst.isBottom(rowEnd)){ return _dropToBottom(tile);}
+    if (GC.isBottom(rowEnd)){ return _dropToBottom(tile);}
     Tile below = grid.cell(rowEnd+1,col);
     _log('Below ${below.dbgString()}');
     return _handleLanding(tile, below, move);
@@ -159,8 +159,8 @@ class FallHandler {
 
   // MoveResult? _sideHandler(Tile tile, Move move){
   //   Map<Move,Map<String,dynamic>> sides = 
-  //       {Move.left: {'delta': -1, 'func': GridConst.isLeft}, 
-  //        Move.right: {'delta': 1, 'func': GridConst.isRight},};
+  //       {Move.left: {'delta': -1, 'func': GC.isLeft}, 
+  //        Move.right: {'delta': 1, 'func': GC.isRight},};
   //   Map<String,dynamic> moveDict = sides[move]!;
   //   return _handleSide(moveDict['delta'], tile, moveDict[ 'func']);
   // }
@@ -185,7 +185,7 @@ class FallHandler {
   MoveResult? _handleSide(Tile tile, Move move){
     assert (move == Move.left || move == Move.right);
     int delta = move == Move.left ? -1 : 1;
-    bool Function(int) borderTest = move == Move.left ? GridConst.isLeft : GridConst.isRight;
+    bool Function(int) borderTest = move == Move.left ? GC.isLeft : GC.isRight;
     
     Tile? side = borderTest(tile.col)?null:grid.cell(tile.row,tile.col+delta);
     Tile? sideBelow = borderTest(tile.col)?null:grid.cell(tile.row+1,tile.col+delta);    

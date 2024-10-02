@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:mr_matt/game/matt_grid.dart';
-import 'package:mr_matt/log.dart';
+import '../utils/log.dart';
 
 abstract class MattLineFileEntry {
   late String player;

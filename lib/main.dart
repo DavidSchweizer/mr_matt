@@ -10,9 +10,10 @@ import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
 import 'game/matt_level.dart';
-import 'log.dart';
+import 'images.dart';
 import 'matt_select_file.dart';
 import 'matt_widgets.dart';
+import 'utils/log.dart';
 import 'widgets/dialogs.dart';
 import 'widgets/stopwatch.dart';
 import 'package:path/path.dart' as p;
@@ -51,6 +52,8 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   int _counter = 0;
   final MattAssets mattAssets = MattAssets();
+  TileImageType imageType = MTC.defaultImageType;
+  final MattTileImages images = MattTileImages();
   // MattFiles fileData = MattFiles();
   SecondsStopwatch stopwatch = SecondsStopwatch();
   LogicalKeyboardKey? lastKeyDown;
@@ -215,9 +218,9 @@ class _MrMattHomeState extends State<MrMattHome> {
             MattAppBarButton(
                     onPressed: () async {_setupPlayback();},
                     iconData: Icons.playlist_play),
-            MattAppBarButton(
-                    onPressed: () async {wipwap();},
-                    iconData: Icons.auto_awesome_mosaic),
+            // MattAppBarButton(
+            //         onPressed: () async {wipwap();},
+            //         iconData: Icons.auto_awesome_mosaic),
                     
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
@@ -243,10 +246,13 @@ class _MrMattHomeState extends State<MrMattHome> {
                     
                       child: 
                         !_filesLoaded()?_loadFilesFirstNotLoaded(context) :
-                        MattGameLevelWidget(assets:mattAssets, 
+
+                        MattGameLevelWidget(images:images, 
+                                      imageType: imageType,
+                                      width: 754,
                                      file: selectedFile, 
                                      grid: grid,
-                                     tileTapped: _tileTapped,
+                                     onTapUpCallback: _tileTappedCallBack,
                                      ),
                                 )))
                           
@@ -449,8 +455,8 @@ class _MrMattHomeState extends State<MrMattHome> {
     }
   }
 
-  void _tileTapped(Tile tile){
-    if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
+  void _tileTappedCallBack(Tile? tile){
+    if (game == null || tile == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     _moveToTarget(tile);
   }
   void _moveToTarget(Tile tile) {
@@ -495,9 +501,9 @@ class _MrMattHomeState extends State<MrMattHome> {
     int nrTimes = 0;
     switch (move) {
       case Move.left: nrTimes = repeat ?? -game!.mrMatt.col;
-      case Move.right: nrTimes = repeat ?? GridConst.mattWidth-game!.mrMatt.col+1;
+      case Move.right: nrTimes = repeat ?? GC.mattWidth-game!.mrMatt.col+1;
       case Move.up: nrTimes = repeat ??-game!.mrMatt.row;
-      case Move.down: nrTimes = repeat ?? GridConst.mattHeight-game!.mrMatt.row+1;
+      case Move.down: nrTimes = repeat ?? GC.mattHeight-game!.mrMatt.row+1;
       default: return;
     }
     _pushMoveRecord(MoveRecord(move:move, repeat:nrTimes.abs()));
@@ -581,19 +587,19 @@ class _MrMattHomeState extends State<MrMattHome> {
     await _setupLoad();
     logDebug('loading');
   }
-  void wipwap() async {  
-    int row=random(0,GridConst.mattHeight);
-    int col=random(0,GridConst.mattWidth);
-    Tile tile = grid!.cell(row,col);
-    logDebug('wapping [$row,$col]  ($tile)');
-    setState(() 
-    { if (tile.isEmpty()) 
-      {game!.grid.setCell(row,col, Tile(TileType.bomb));}
-    else 
-      {game!.grid.setCell(row,col, Tile(TileType.empty));
-      }
-    });
-  }
+  // void wipwap() async {  
+  //   int row=random(0,GC.mattHeight);
+  //   int col=random(0,GC.mattWidth);
+  //   Tile tile = grid!.cell(row,col);
+  //   logDebug('wapping [$row,$col]  ($tile)');
+  //   setState(() 
+  //   { if (tile.isEmpty()) 
+  //     {game!.grid.setCell(row,col, Tile(TileType.bomb));}
+  //   else 
+  //     {game!.grid.setCell(row,col, Tile(TileType.empty));
+  //     }
+  //   });
+  // }
 }
 
 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:mr_matt/images.dart';
 // ignore: unused_import
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
 import 'game/matt_file.dart';
 // ignore: unused_import
 import 'game/matt_level.dart';
+import 'paint4.dart';
+import 'utils/log.dart';
 // ignore: unused_import
-import 'log.dart';
 
 const String defaultImageStyle = 'large/Apples';
 // enum TileType {empty,grass,wall,stone,food,box1,box2,box3,bomb,mrMatt,loser}
@@ -62,7 +64,7 @@ class MattGridWidget extends StatefulWidget{
 class MattGridState extends State<MattGridWidget> {
   Column buildColumn (int col) {
     List<MattTileWidget> children = [];
-    for (int row in GridConst.rowRange()) {
+    for (int row in GC.rowRange()) {
       children.add(MattTileWidget(tile: widget.grid.cell(row,col), assets: widget.assets, tileTapped: widget.tileTapped,));
     }
     return Column(children:children);
@@ -70,7 +72,7 @@ class MattGridState extends State<MattGridWidget> {
   Widget buildGrid() {
     logDebug('BBB: start build (grid)  {${nowString('HH:mm:ss.S')}}');
     List<Column> columns = [];
-    for (int col in GridConst.colRange()) {
+    for (int col in GC.colRange()) {
       columns.add(buildColumn(col));
     }
     logDebug('BBB: end build (grid) {${nowString('HH:mm:ss.S')}}');
@@ -86,14 +88,16 @@ class MattGridState extends State<MattGridWidget> {
 }
 
 class MattGameLevelWidget extends StatefulWidget{
-  final MattAssets assets;
+  // final MattAssets assets;
+  final MattTileImages images;
+  final TileImageType imageType;
   final MattFile? file;
   final Grid? grid;
-  final Function(Tile)? tileTapped;
+  final double width;
+  final Function(Tile?)? onTapUpCallback;
   // final Function(BuildContext) loadFile;
-  const MattGameLevelWidget({super.key, required this.assets, 
-          // required this.loadFile,  
-          this.file, this.grid, this.tileTapped});
+  const MattGameLevelWidget({super.key, required this.images, required this.imageType,
+          required this.width,  required this.file, this.grid, this.onTapUpCallback});
   @override
   MattFileState createState() =>MattFileState();
 }
@@ -110,7 +114,10 @@ class MattFileState extends State<MattGameLevelWidget>  {
   }
   Widget _buildLoaded(BuildContext context) {
     assert (_fileLoaded() && _levelSelected());
-    return Center(child: MattGridWidget(assets: widget.assets, grid:widget.grid!, tileTapped:widget.tileTapped));
+    return Center(child: MattGridWidget2(images: widget.images, grid:widget.grid!, 
+                  tileImageType: widget.imageType,
+                  width: widget.width,
+        onTapUpCallback:widget.onTapUpCallback));
   }  
 }
 

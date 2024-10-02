@@ -1,8 +1,4 @@
 import 'dart:collection';
-import 'dart:io';
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
 
 class MrMattException implements Exception {
   final String cause;
@@ -21,6 +17,7 @@ class RowCol {
   String toString() {
     return '[$row,$col]';
   }
+  static bool isValid(row,col)=>GC.isGridRowCol(row, col);
 }
 
 enum TileType {empty, mrMatt, stone, wall, bomb, box1, box2, box3, grass, food, loser}
@@ -145,6 +142,7 @@ class GridConst{
     }
   }
 }
+typedef GC = GridConst;
 class GridColumn {
   List<Tile> _rows = [];
   List<Tile> get rows=>_rows;
@@ -152,7 +150,7 @@ class GridColumn {
   int get col =>_col;
   GridColumn(int col) {
     _col=col;
-    for (int row in GridConst.rowRange()) {
+    for (int row in GC.rowRange()) {
       _rows.add(Tile(TileType.empty,row,col));
     }
   }
@@ -161,12 +159,12 @@ class GridColumn {
       _rows = [];
     }
     _col = column.col;
-    for (int row in GridConst.rowRange()) {
+    for (int row in GC.rowRange()) {
       _rows.add(Tile.copy(column.rows[row]));
     }
   }
   void _checkRow(int row){ 
-    if (!GridConst.isGridRow(row)) {
+    if (!GC.isGridRow(row)) {
       throw(MrMattException('Invalid row: $row'));
     }
   }
@@ -186,7 +184,7 @@ class Grid {
   List<GridColumn> _columns = [];
   List<GridColumn> get columns=>_columns;
   Grid() {
-    for (int col in GridConst.colRange()){
+    for (int col in GC.colRange()){
       _columns.add(GridColumn(col));
     }
   }
@@ -194,12 +192,12 @@ class Grid {
     if (_columns.isNotEmpty) {
       _columns = [];
     }
-    for (int col in GridConst.colRange()){
+    for (int col in GC.colRange()){
       _columns.add(GridColumn.copy(board.columns[col]));
     }
   }
   void _checkCol(int col){ 
-    if (!GridConst.isGridCol(col)) {
+    if (!GC.isGridCol(col)) {
       throw(MrMattException('Invalid column: $col'));
     }
   }
@@ -222,15 +220,15 @@ class Grid {
   }
   List<Tile> row(int row) {
     List<Tile> result = [];
-    for (int col in GridConst.colRange()){
+    for (int col in GC.colRange()){
       result.add(cell(row,col));
     }
     return result;
   }
   int nrFood() {
     int result = 0;
-    for (int row in GridConst.rowRange()){
-      for (int col in GridConst.colRange()){
+    for (int row in GC.rowRange()){
+      for (int col in GC.colRange()){
         Tile tile = cell(row,col);
         if (tile.isFood()) {
           result ++;
@@ -240,8 +238,8 @@ class Grid {
     return result;
   }
   RowCol findMrMatt(){
-    for (int row in GridConst.rowRange()){
-      for (int col in GridConst.colRange()){
+    for (int row in GC.rowRange()){
+      for (int col in GC.colRange()){
         Tile tile = cell(row,col);
         if (tile.isMrMatt()) {
           return RowCol(row,col);
@@ -255,25 +253,6 @@ class Grid {
       cell(tileMove.rowStart,tileMove.colStart).setEmpty();
       cell(tileMove.rowEnd,tileMove.colEnd).setTileType(tileMove.tileTypeEnd);
       }
-  }
-  void dump() {
-    if (kDebugMode) {
-      stdout.write('  ');
-      for (int col in GridConst.colRange()){
-        stdout.write(col.toString().padLeft(3,' '));
-      }
-      stdout.write('\n');
-      for (int row in GridConst.rowRange()){
-        stdout.write('${row.toString().padRight(2,' ')}: ');
-        for (int col in GridConst.colRange()){
-          stdout.write(cell(row,col).dumpStr());
-          if (!GridConst.isRight(col)) {
-            stdout.write(' ');
-          }
-        }
-        stdout.write('\n');
-      }
-    }
   }
 }
 
@@ -306,32 +285,4 @@ class TileMoves {
   void clear() =>_tileMoves.clear();
   TileMove? get first=>_tileMoves.first;
   TileMove? get last=>_tileMoves.last;
-}
-
-
-int random(int start, int end) {
-  final random = Random();
-  return start + random.nextInt(end - start);  
-}
-TileType getRandomTile(){
-  const Map<int,TileType> mapToTile = 
-  {0:TileType.empty, 1:TileType.stone, 2:TileType.wall, 3:TileType.bomb, 4:TileType.box1, 5:TileType.box2, 6:TileType.box3, 7:TileType.grass, 8:TileType.food};
-  return mapToTile[random(0,mapToTile.length)]??TileType.empty;
-}
-
-Grid createRandomGrid() {
-  Grid result = Grid();
-  int mrMattRow = random(0,GridConst.mattHeight);
-  int mrMattCol = random(0,GridConst.mattWidth);
-  for (int row in GridConst.rowRange()) {
-    for (int col in GridConst.colRange()) {
-      if (row == mrMattRow && col == mrMattCol) {
-        result.cell(row,col).setMrMatt();
-      }
-      else {
-        result.cell(row,col).tileType = getRandomTile();
-      }
-    }
-  }
-  return result;
 }

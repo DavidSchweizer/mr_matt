@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../log.dart';
-
 class _ArrowButtonWidget extends StatelessWidget {
   final Function() onPressed;
   final IconData icon;
   void _onPressed() {
-    logDebug('button pressed');
     onPressed();
   }
   const _ArrowButtonWidget({required this.onPressed, required this.icon});
