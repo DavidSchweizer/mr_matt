@@ -188,62 +188,59 @@ class _MrMattHomeState extends State<MrMattHome> {
           height: _bottomBarHeight! ,//* queryData.size.height,
           child:
           Row(children: [
-            Column(
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Text("time:"),
-                    StopwatchWidget(stopwatch: stopwatch),
-                  ],
-                ),
-                Text('moves: $_counter'),
+                const Text("time:"),
+                StopwatchWidget(stopwatch: stopwatch),
               ],
             ),
+            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+            Text('moves: $_counter'),
             
-            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+            // const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
             
-            MattAppBarButton(
-                    onPressed: _moveLeft,
-                    iconData: Icons.keyboard_arrow_left),
-            MattAppBarButton(
-                    onPressed: _moveUp,
-                      iconData: Icons.keyboard_arrow_up),
-            MattAppBarButton(
-                    onPressed: _moveDown,
-                    iconData: Icons.keyboard_arrow_down),
-            MattAppBarButton(
-                    onPressed: _moveRight,
-                    iconData: Icons.keyboard_arrow_right),
-            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),                      
-            MattAppBarButton(
-                    onPressed: _restartGame,
-                    iconData: Icons.restart_alt),
-            MattAppBarButton(
-                    onPressed: _undoMove,
-                    iconData: Icons.undo),
-            MattAppBarButton(
-                    onPressed: _loader,
-                    iconData: Icons.folder_open),
-            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
-                const SizedBox(
-                  width: 10,
-                ),
-            MattAppBarButton(
-                    onPressed: () async {_saveGame();},
-                    iconData: Icons.download),
-            MattAppBarButton(
-                    onPressed: () async {_loadGame();},
-                    iconData: Icons.upload),
-            const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
-                const SizedBox(
-                  width: 10,
-                ),                
-            MattAppBarButton(
-                    onPressed: () async {_setupPlayback();},
-                    iconData: Icons.playlist_play),
             // MattAppBarButton(
-            //         onPressed: () async {wipwap();},
-            //         iconData: Icons.auto_awesome_mosaic),
+            //         onPressed: _moveLeft,
+            //         iconData: Icons.keyboard_arrow_left),
+            // MattAppBarButton(
+            //         onPressed: _moveUp,
+            //           iconData: Icons.keyboard_arrow_up),
+            // MattAppBarButton(
+            //         onPressed: _moveDown,
+            //         iconData: Icons.keyboard_arrow_down),
+            // MattAppBarButton(
+            //         onPressed: _moveRight,
+            //         iconData: Icons.keyboard_arrow_right),
+            // const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),                      
+            // MattAppBarButton(
+            //         onPressed: _restartGame,
+            //         iconData: Icons.restart_alt),
+            // MattAppBarButton(
+            //         onPressed: _undoMove,
+            //         iconData: Icons.undo),
+            // MattAppBarButton(
+            //         onPressed: _loader,
+            //         iconData: Icons.folder_open),
+            // const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+            //     const SizedBox(
+            //       width: 10,
+            //     ),
+            // MattAppBarButton(
+            //         onPressed: () async {_saveGame();},
+            //         iconData: Icons.download),
+            // MattAppBarButton(
+            //         onPressed: () async {_loadGame();},
+            //         iconData: Icons.upload),
+            // const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
+            //     const SizedBox(
+            //       width: 10,
+            //     ),                
+            // MattAppBarButton(
+            //         onPressed: () async {_setupPlayback();},
+            //         iconData: Icons.playlist_play),
+            // // MattAppBarButton(
+            // //         onPressed: () async {wipwap();},
+            // //         iconData: Icons.auto_awesome_mosaic),
                     
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
                 const SizedBox(
