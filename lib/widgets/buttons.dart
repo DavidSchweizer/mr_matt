@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
+
 class MattAppBarButton extends StatefulWidget {
   final Function()? onPressed;
   final IconData iconData;
@@ -13,13 +15,15 @@ class _MattAppBarButtonState extends State<MattAppBarButton> {
   Widget build(BuildContext context) {
     return Row(children:[ IconButton(
                     onPressed: widget.onPressed,
+                    visualDensity: const VisualDensity(vertical: CButtons.buttonVerticalDensity),
                     icon: Icon(
                       widget.iconData,
-                      size: 30,
+                      size: CButtons.buttonIconSize,
                       color: Colors.white,
                     )),
                 const SizedBox(
-                  width: 10,
+                  width: CButtons.separatorWidth,
+                  height: CButtons.separatorHeight,
                 ),
                 ]);
   }

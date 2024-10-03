@@ -1,92 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mr_matt/images.dart';
-// ignore: unused_import
-import 'game/matt_game.dart';
-import 'game/matt_grid.dart';
+
 import 'game/matt_file.dart';
-// ignore: unused_import
-import 'game/matt_level.dart';
-import 'paint4.dart';
-import 'utils/log.dart';
-// ignore: unused_import
-
-const String defaultImageStyle = 'large/Apples';
-// enum TileType {empty,grass,wall,stone,food,box1,box2,box3,bomb,mrMatt,loser}
-const Map<TileType,String> mattImages = {
-      TileType.empty:'0-empty.bmp', TileType.grass:'1-grass.bmp', TileType.wall:'2-wall.bmp',
-        TileType.stone:'3-stone.bmp',TileType.food:'4-food.bmp',
-        TileType.box1:'5-box1.bmp',TileType.box2:'6-box2.bmp',TileType.box3:'7-box3.bmp',
-        TileType.bomb:'8-bomb.bmp',TileType.mrMatt:'9-matt.bmp',TileType.loser:'a-loser.bmp',};
-
-
-class MattAssets {
-  late Map<TileType,Image> _images;
-  MattAssets([String imageStyle=defaultImageStyle]) {
-    _images={};
-    for (TileType tileType in TileType.values) {
-      _images[tileType] = Image.asset('img/$imageStyle/${mattImages[tileType]}');
-    }
-  }
-  Image? getImage(TileType imgType)=>_images[imgType];
-}
-
-class MattTileWidget extends StatefulWidget {  
-  final MattAssets assets;
-  final Tile tile;
-  final Function(Tile)? tileTapped;
-  const MattTileWidget({super.key, required this.tile, required this.assets, this.tileTapped});
-
-  @override
-  MattTileState createState() => MattTileState();
-}
-
-class MattTileState extends State<MattTileWidget> {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(onTap: (){
-       if (widget.tileTapped != null) 
-          {widget.tileTapped!(widget.tile);}
-       }, 
-       child: SizedBox(width:24, height: 24, child: widget.assets.getImage(widget.tile.tileType)));
-  }
-}
-
-class MattGridWidget extends StatefulWidget{
-  final MattAssets assets;
-  final Grid grid;
-  final Function(Tile)? tileTapped;
-  const MattGridWidget({super.key, required this.assets, required this.grid, this.tileTapped});
-
-  @override
-  MattGridState createState() => MattGridState();
-}
-
-class MattGridState extends State<MattGridWidget> {
-  Column buildColumn (int col) {
-    List<MattTileWidget> children = [];
-    for (int row in GC.rowRange()) {
-      children.add(MattTileWidget(tile: widget.grid.cell(row,col), assets: widget.assets, tileTapped: widget.tileTapped,));
-    }
-    return Column(children:children);
-  }
-  Widget buildGrid() {
-    logDebug('BBB: start build (grid)  {${nowString('HH:mm:ss.S')}}');
-    List<Column> columns = [];
-    for (int col in GC.colRange()) {
-      columns.add(buildColumn(col));
-    }
-    logDebug('BBB: end build (grid) {${nowString('HH:mm:ss.S')}}');
-    return Row(children: columns);
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Container(padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color:Colors.amber, border: Border.symmetric(),borderRadius: BorderRadius.all(Radius.circular(6))),
-                    child:buildGrid());
-  }
-
-}
-
+import 'game/matt_grid.dart';
+import 'game_grid.dart';
+import 'images.dart';
 class MattGameLevelWidget extends StatefulWidget{
   // final MattAssets assets;
   final MattTileImages images;
@@ -114,10 +31,10 @@ class MattFileState extends State<MattGameLevelWidget>  {
   }
   Widget _buildLoaded(BuildContext context) {
     assert (_fileLoaded() && _levelSelected());
-    return Center(child: MattGridWidget2(images: widget.images, grid:widget.grid!, 
-                  tileImageType: widget.imageType,
-                  width: widget.width,
-        onTapUpCallback:widget.onTapUpCallback));
+    return Center(child: GameGridWidget(images: widget.images, grid:widget.grid!, 
+    tileImageType: widget.imageType,
+    width: widget.width,
+            onTapUpCallback:widget.onTapUpCallback));
   }  
 }
 

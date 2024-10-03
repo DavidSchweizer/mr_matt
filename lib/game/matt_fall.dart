@@ -109,7 +109,8 @@ class FallHandler {
     assert(tile.isMovable());
     int rowEnd = _findEndRow(row,col);
     _log('START drop [$row,$col]->[$rowEnd,$col] ($tile)');
-    if (GC.isBottom(rowEnd)){ return _dropToBottom(tile);}
+    if (rowEnd == row) {return MoveResult.ok;} // moveObject can mean no falling
+    else if (GC.isBottom(rowEnd)){ return _dropToBottom(tile);}
     Tile below = grid.cell(rowEnd+1,col);
     _log('Below ${below.dbgString()}');
     return _handleLanding(tile, below, move);

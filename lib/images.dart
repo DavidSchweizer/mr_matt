@@ -39,8 +39,7 @@ class MattTileConst {
          TileType.bomb:'8-bomb.bmp',TileType.mrMatt:'9-matt.bmp',TileType.loser:'a-loser.bmp',};
   static String imageFilename(String size, String flavor, TileType tileType) =>'img/$size/$flavor/${filenames[tileType]}';
   static Size normalizedSize(double width, [double? height]) {    
-    const double aspect = GC.mattHeight / GC.mattWidth;
-    height??=width*aspect;
+    height??=width/GC.aspectRatio;
     double boxSize = min((width/GC.mattWidth.toDouble()), (height/GC.mattHeight.toDouble()));
     double w = (GC.mattWidth * boxSize).toDouble();
     double h = (GC.mattHeight * boxSize).toDouble();

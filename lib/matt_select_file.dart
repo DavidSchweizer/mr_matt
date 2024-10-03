@@ -4,8 +4,28 @@ import '../utils/log.dart';
 import 'game/matt_file.dart';
 import 'game/matt_level.dart';
 
-double aspect = 432/744; // bitmap size of background pic
-
+class ConfigSelectFileWindows {
+  static const double aspect = 432/744; // bitmap size of background pic
+  
+  static const double sizeOfBox = 500;
+  static const double boxHeight = 20;
+  static const double containerWidth = 300; // width of ratings box container
+  
+  static const double dialogWidth = 500; // width of select file dialog box
+  static const double dialogExtra = 80; // extra for dialog box
+  static const double boxHeight2 = 16;
+}
+// class ConfigSelectFile {
+//   static const double aspect = 432/744; // bitmap size of background pic
+  
+//   static const double sizeOfBox = 300; //500;
+//   static const double boxHeight = 10;//20;
+//   static const double containerWidth = 200; // 300; // width of ratings box container
+  
+//   static const double dialogWidth = 320; //500; // width of select file dialog box
+//   static const double dialogExtra = 60; //80; // extra for dialog box
+//   static const double boxHeight2 = 12; //16;}
+typedef CSF = ConfigSelectFileWindows;
   class MattSelectFileTile extends StatefulWidget {
     final MattFiles files;    
     final MattFile? initialFile;
@@ -44,6 +64,7 @@ double aspect = 432/744; // bitmap size of background pic
 
     Widget _getRating(Rating rating) {
       return SwitchListTile(dense: true, title: Text(rating.name),value: ratings[rating]??false, 
+                visualDensity: const VisualDensity(vertical: -3),
                 onChanged: (bool value) 
                 { logDebug('Rating: ${rating.name} value: $value'); 
                   setState((){
@@ -84,7 +105,7 @@ double aspect = 432/744; // bitmap size of background pic
       return Opacity(
         opacity: .75,
         child: Container(
-                  width: 300,
+                  width: CSF.containerWidth,
                   // height: 300,
                   decoration: BoxDecoration(color: Colors.amber[200],
                   borderRadius: const BorderRadius.all(Radius.circular(20)),),
@@ -133,24 +154,23 @@ double aspect = 432/744; // bitmap size of background pic
                   child: const Text('No games with this selection'),));                
       }
     }
-
     @override
     Widget build(BuildContext context) {
-      const double sizeOfBox = 500;
       _selectedFile = _findSelectedFile();
       // widget.fileChanged!(_selectedFile);
       return Center(child: 
                     Container(
-                      width: sizeOfBox,
-                      height: sizeOfBox * aspect,                                                
+                      width: CSF.sizeOfBox,
+                      height: CSF.sizeOfBox * CSF.aspect,
+                      padding: const EdgeInsets.all(8),                                                
                       decoration: BoxDecoration(
-                      image: const DecorationImage(image: AssetImage('img/mm_pic.jpg'),),                          
-                      border: Border.all(color: Colors.black),
+                        image: const DecorationImage(image: AssetImage('img/mm_pic.jpg'),fit:BoxFit.scaleDown),                           
+                        border: Border.all(color: Colors.black),
                       ),                        
                       child: 
                         Column(
                           children: [
-                            const SizedBox(height: 20),
+                            const SizedBox(height: CSF.boxHeight),
                             _getRatingsBox(),
                             // _getLoadGameTextBox(),
                             const SizedBox(height: 20),
@@ -180,13 +200,13 @@ double aspect = 432/744; // bitmap size of background pic
     Widget build(BuildContext context) {
       return Dialog(backgroundColor: Colors.amber[100], 
                     child: SizedBox(
-                      width: 500,
-                      height: 500*aspect + 80,
+                      width: CSF.dialogWidth,
+                      height: CSF.dialogWidth*CSF.aspect + CSF.dialogExtra,
                       child: Center(
                         child: Column(
-                          children: [const SizedBox(height:20), 
+                          children: [const SizedBox(height:CSF.boxHeight), 
                           MattSelectFileTile(files:widget.files, initialFile: widget.initialFile, fileChanged: callBackFile),
-                          const SizedBox(height:16),
+                          const SizedBox(height:CSF.boxHeight2),
                           Row(mainAxisAlignment: MainAxisAlignment.center,
                           children:[MattDialogButton(onPressed: () {
                                     Navigator.of(context).pop(selectedFile);

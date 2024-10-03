@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
 import 'package:mr_matt/game/matt_sol.dart';
 import 'package:mr_matt/widgets/buttons.dart';
+import 'config.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
@@ -51,7 +53,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   final String matDirectory = p.canonicalize('mat');
 
   int _counter = 0;
-  final MattAssets mattAssets = MattAssets();
+  // final MattAssets mattAssets = MattAssets();
   TileImageType imageType = MTC.defaultImageType;
   final MattTileImages images = MattTileImages();
   // MattFiles fileData = MattFiles();
@@ -73,6 +75,11 @@ class _MrMattHomeState extends State<MrMattHome> {
   Timer? playBackTimer;
   Timer? movesTimer;
 
+  MediaQueryData? queryData;
+  double? _toolbarHeight;
+  double? _mainWidth;
+  double? _bottomBarHeight;
+
   void _pushMove(Move move) => movesQueue.addLast(move);
   void _pushMoveRecord(MoveRecord moveRecord) {
     for (int i = moveRecord.repeat; i>=0;i--) {
@@ -87,7 +94,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   
   GameFiles gameFiles = GameFiles();
   
-  bool _fileLoaded() =>selectedFile.isNotEmpty();
+  bool _fileLoaded() =>_filesLoaded()&&selectedFile.isNotEmpty();
   bool _filesLoaded()=> gameFiles.currentMatFiles.isNotEmpty;
   bool _levelSelected() =>currentLevel!=null;
   bool _gameRunning()=>game!=null;
@@ -149,6 +156,19 @@ class _MrMattHomeState extends State<MrMattHome> {
                               (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
     movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
   }
+
+  @override
+  void didChangeDependencies() {
+    queryData = MediaQuery.of(context);
+    double totalHeight = queryData!.size.height;
+    double totalWidth = queryData!.size.width;
+    _toolbarHeight = totalHeight * 0.1;
+    _mainWidth = min(totalWidth-8, (totalHeight * 0.8-12) * GC.aspectRatio);
+    _bottomBarHeight = totalHeight * 0.1;
+    logDebug('changed deps: width: $totalWidth, height: $totalHeight, \ntoolbar: $_toolbarHeight, bottombar: $_bottomBarHeight');
+    logDebug('main width: $_mainWidth expected height: ${_mainWidth!/GC.aspectRatio} avail: ${totalHeight * 0.8} ');
+    super.didChangeDependencies();
+  }
   @override
   Widget build(BuildContext context) {
     // MattAssets assets = MattAssets(defaultImageStyle);    
@@ -159,10 +179,13 @@ class _MrMattHomeState extends State<MrMattHome> {
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: Text('Mr. Matt ($player) | ${_getTitle()}'),
+          toolbarHeight: _toolbarHeight,
         ),
+        drawer: const Drawer(),
         bottomNavigationBar: BottomAppBar(
           color: Theme.of(context).colorScheme.inversePrimary,
           elevation: 10,
+          height: _bottomBarHeight! ,//* queryData.size.height,
           child:
           Row(children: [
             Column(
@@ -227,6 +250,8 @@ class _MrMattHomeState extends State<MrMattHome> {
                   width: 10,
                 ),
             MattLevelSelector(file: selectedFile, levelSelected: _selectLevel, selected:currentLevel),
+
+            Text('Height: ${queryData?.size.height} width: ${queryData?.size.width}'),
               ]
               )
         ),
@@ -238,18 +263,18 @@ class _MrMattHomeState extends State<MrMattHome> {
             [Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(width:754, height: 440, 
+                SizedBox(width: _mainWidth!, height: _mainWidth!/GC.aspectRatio,
                 child: 
                   Focus(onFocusChange: (bool value)=>logDebug('focus changed: $value'),
                             onKeyEvent: (node,event)=>handleKeyEvent(node,event),
-                      child: Container(decoration: BoxDecoration(color:Colors.amber[100], border: const Border.symmetric(),),
+                      child: Container(decoration: BoxDecoration(color:Colors.green[100], border: const Border.symmetric(),),
                     
                       child: 
-                        !_filesLoaded()?_loadFilesFirstNotLoaded(context) :
-
+                        !_fileLoaded() ?_loadFilesFirstNotLoaded(context) :
+                
                         MattGameLevelWidget(images:images, 
                                       imageType: imageType,
-                                      width: 754,
+                                      width: _mainWidth!,
                                      file: selectedFile, 
                                      grid: grid,
                                      onTapUpCallback: _tileTappedCallBack,
@@ -296,7 +321,6 @@ class _MrMattHomeState extends State<MrMattHome> {
     logDebug('file changed: $file');
   }
   Widget _loadFilesFirstNotLoaded(BuildContext context) {
-    assert (!_filesLoaded());
     return FutureBuilder<bool>(future: loadFileData(true), 
             builder:(context, snapshot) {
               if (snapshot.hasData) {

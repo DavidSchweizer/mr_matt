@@ -65,13 +65,13 @@ class MattTileWidget extends flutter.StatelessWidget {
         painter:MattTilePainter(images.getImage(tile.tileType)!));
   }
 }
-class MattGridWidget2 extends flutter.StatelessWidget {
+class GameGridWidget extends flutter.StatelessWidget {
   final Grid grid;
   final MattTileImages images;
   final TileImageType tileImageType; 
   final double width;
   final Function(Tile?)? onTapUpCallback;
-  MattGridWidget2({super.key, required this.images, required this.grid, required this.tileImageType, 
+  GameGridWidget({super.key, required this.images, required this.grid, required this.tileImageType, 
                 required this.width, this.onTapUpCallback});
   final MattGridPaintGeometry geometry = MattGridPaintGeometry();
 
@@ -103,13 +103,7 @@ class MattGridWidget2 extends flutter.StatelessWidget {
     geometry.boxSize = size.width/GC.mattWidth;
     return 
       flutter.GestureDetector(onTapUp: _tapUpHandler, behavior: HitTestBehavior.opaque,
-        child: flutter.SizedBox(width: size.width,height:size.height,
-          child: flutter.Container(
-            alignment: Alignment.center,
-            padding: const flutter.EdgeInsets.all(1),
-              decoration:  flutter.BoxDecoration(color: flutter.Colors.amber, border: flutter.Border.all(),),
-            width: size.width+2,
-            height: size.height+2,
+        // child: flutter.SizedBox(width: size.width,height:size.height,
             child: flutter.FittedBox(child: flutter.SizedBox(width: size.width, height: size.height, 
               child:
                 FutureBuilder<bool>(future: _loadImages(geometry.boxSize.round()), 
@@ -125,9 +119,9 @@ class MattGridWidget2 extends flutter.StatelessWidget {
                 )
             ),
           ),
-              ),
-        ),
-      );
+        )
+      // )
+      ;
   }
 }
 

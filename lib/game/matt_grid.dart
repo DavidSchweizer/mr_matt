@@ -120,6 +120,7 @@ class Tile {
 class GridConst{
   static const mattHeight = 18;
   static const mattWidth  = 31;
+  static final aspectRatio = mattWidth.toDouble()/mattHeight.toDouble();
   static const bottomRow = mattHeight-1;
   static const topRow = 0;
   static const leftCol = 0;
