@@ -14,7 +14,8 @@ class FallHandler {
   late TileMoves _tileMoves;
   TileMoves get tileMoves =>_tileMoves;
   late Function()? _callback;
-  final bool _detailedLog = false;
+  // setting this to true makes the interface very laggy
+  final bool _detailedLog = true; 
 
   void _log(String s){ 
     if (_detailedLog) logDebug(s);
@@ -68,7 +69,7 @@ class FallHandler {
     grid.cell(rowStart,colStart).setEmpty();
     grid.setCell(rowEnd, colEnd, Tile(tileType));
     tileMoves.push(rowStart, colStart, rowEnd, colEnd, tileType);
-    logDebug('moveTile(fallhandler): ${tileMoves.last}');
+    _log('moveTile(fallhandler): ${tileMoves.last}');
     _doCallBack();
   }
 
@@ -77,7 +78,7 @@ class FallHandler {
     while (GC.isGridRow(result) && grid.cell(result,col).isEmpty()) { 
       result++;
     }
-    return /*GC.isGridRow(result) ? result : */ result-1;
+    return result-1;
   }
 
   MoveResult _dropToBottom(Tile tile) {
@@ -109,7 +110,10 @@ class FallHandler {
     assert(tile.isMovable());
     int rowEnd = _findEndRow(row,col);
     _log('START drop [$row,$col]->[$rowEnd,$col] ($tile)');
-    if (rowEnd == row) {return MoveResult.ok;} // moveObject can mean no falling
+    if (rowEnd == row && !grid.cell(rowEnd,col).isBox()) 
+    {// moveObject doesnt actually fall (except when encountering a Box)
+      return MoveResult.ok;
+    } 
     else if (GC.isBottom(rowEnd)){ return _dropToBottom(tile);}
     Tile below = grid.cell(rowEnd+1,col);
     _log('Below ${below.dbgString()}');

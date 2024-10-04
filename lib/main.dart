@@ -21,12 +21,13 @@ import 'widgets/stopwatch.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
+  initLogging();
   runApp(const MrMattApp());
+  // closeLogging();
 }
 
 class MrMattApp extends StatelessWidget {
   const MrMattApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -181,7 +182,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           title: Text('Mr. Matt ($player) | ${_getTitle()}'),
           toolbarHeight: _toolbarHeight,
         ),
-        drawer: const Drawer(),
+        endDrawer: const Drawer(),
         bottomNavigationBar: BottomAppBar(
           color: Theme.of(context).colorScheme.inversePrimary,
           elevation: 10,
@@ -264,7 +265,7 @@ class _MrMattHomeState extends State<MrMattHome> {
                 child: 
                   Focus(onFocusChange: (bool value)=>logDebug('focus changed: $value'),
                             onKeyEvent: (node,event)=>handleKeyEvent(node,event),
-                      child: Container(decoration: BoxDecoration(color:Colors.green[100], border: const Border.symmetric(),),
+                      // child: Container(decoration: BoxDecoration(color:Colors.green[100], border: const Border.symmetric(),),
                     
                       child: 
                         !_fileLoaded() ?_loadFilesFirstNotLoaded(context) :
@@ -276,7 +277,7 @@ class _MrMattHomeState extends State<MrMattHome> {
                                      grid: grid,
                                      onTapUpCallback: _tileTappedCallBack,
                                      ),
-                                )))
+                                ))
                           
                 ],
                 ),          
@@ -550,11 +551,16 @@ class _MrMattHomeState extends State<MrMattHome> {
     await gameFiles.updateSolution(gameFiles.allSolutionsFile, player, game!, true);
     bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
     if (mounted) {
-      await showMessageDialog(
-        context, 'You have completed ${gameSolved? "the whole game" : "this level"} in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}');
-      selectedFile.levels[currentLevel!+1].accessible = true;
+      String msg = 'You have completed this level in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}';
+      if (gameSolved) {
+        msg = '$msg\nThis was the last level of this game!';
+      }
+      await showMessageDialog(context, msg);
+      if (!gameSolved) {
+        selectedFile.levels[currentLevel!+1].accessible = true;
+      }
     }
-    setState(() { _selectLevel(currentLevel!+1);});    
+    setState(() { _selectLevel(currentLevel! + (gameSolved? 0: 1));});    
   }
   void _loader() {
     _haltGame();
