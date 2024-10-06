@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
 import 'package:mr_matt/game/matt_sol.dart';
 import 'package:mr_matt/widgets/buttons.dart';
-import 'config.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
 import 'game/matt_grid.dart';
@@ -158,6 +157,42 @@ class _MrMattHomeState extends State<MrMattHome> {
     movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
   }
 
+  List<Widget> _buildDrawerDestinations(BuildContext context) {
+    return [    
+      Padding(
+            padding: const EdgeInsets.fromLTRB(28, 16, 16, 10),
+            child: Text('Game menu',
+              style: Theme.of(context).textTheme.titleSmall,),
+            ),
+      const Divider(),
+      const NavigationDrawerDestination(icon: Icon(Icons.folder_open), label: Text('Load game')),
+      const VerticalDivider(width: 60, thickness: 4, color: Colors.black87),
+      const NavigationDrawerDestination(icon: Icon(Icons.download), label: Text('Save game state'), enabled: false),
+      const NavigationDrawerDestination(icon: Icon(Icons.upload), label: Text('Restore game state'), enabled: false),
+      NavigationDrawerDestination(icon: const Icon(Icons.undo), label: const Text('Undo last move (ctrl-Z)'), enabled: _counter>0),
+      NavigationDrawerDestination(icon: const Icon(Icons.play_arrow), label: const Text('Replay moves'), enabled: _counter>0),
+
+
+      // ListTile(leading: , title: , onTap: () { Navigator.pop(context); _loader();}),
+    ];
+  }
+
+  void _drawerSelected(int index) {
+    Map<int,void Function()> destinations = 
+      {0: _loader, 
+      1: _saveGame,
+      2: _loadGame,
+      3: _undoMove,
+      4: _setupPlayback,
+      };
+    logDebug('selected $index');
+    void Function()? execute = destinations[index];
+    if (execute != null) {
+      Navigator.pop(context); 
+      execute();
+    }
+  }
+
   @override
   void didChangeDependencies() {
     queryData = MediaQuery.of(context);
@@ -182,7 +217,9 @@ class _MrMattHomeState extends State<MrMattHome> {
           title: Text('Mr. Matt ($player) | ${_getTitle()}'),
           toolbarHeight: _toolbarHeight,
         ),
-        endDrawer: const Drawer(),
+        drawer: NavigationDrawer(onDestinationSelected: _drawerSelected,
+              backgroundColor:Colors.amber[100],
+          children: _buildDrawerDestinations(context)),
         bottomNavigationBar: BottomAppBar(
           color: Theme.of(context).colorScheme.inversePrimary,
           elevation: 10,
@@ -398,18 +435,18 @@ class _MrMattHomeState extends State<MrMattHome> {
       _startGame(newFile, newFile.highestLevel());
     }
   }
-  void _moveLeft() {
-    _gameMove(Move.left);
-  }
-  void _moveRight() {
-    _gameMove(Move.right);
-  }
-  void _moveUp() {
-    _gameMove(Move.up);
-  }
-  void _moveDown() {
-    _gameMove(Move.down);
-  }
+  // void _moveLeft() {
+  //   _gameMove(Move.left);
+  // }
+  // void _moveRight() {
+  //   _gameMove(Move.right);
+  // }
+  // void _moveUp() {
+  //   _gameMove(Move.up);
+  // }
+  // void _moveDown() {
+  //   _gameMove(Move.down);
+  // }
   
   void _checkPlaybackMove() async {
     if (tileMoves == null || tileMoves!.isEmpty) {
