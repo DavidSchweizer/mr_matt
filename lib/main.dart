@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mr_matt/game/game_files.dart';
-import 'package:mr_matt/game/matt_sol.dart';
 import 'package:mr_matt/widgets/buttons.dart';
 import 'game/matt_file.dart';
 import 'game/matt_game.dart';
@@ -94,13 +93,16 @@ class _MrMattHomeState extends State<MrMattHome> {
   
   GameFiles gameFiles = GameFiles();
   
-  bool _fileLoaded() =>_filesLoaded()&&selectedFile.isNotEmpty();
-  bool _filesLoaded()=> gameFiles.currentMatFiles.isNotEmpty;
-  bool _levelSelected() =>currentLevel!=null;
-  bool _gameRunning()=>game!=null;
+  bool get isFileLoaded =>isFilesLoaded&&selectedFile.isNotEmpty();
+  bool get isFilesLoaded=> gameFiles.currentMatFiles.isNotEmpty;
+  bool get isLevelSelected =>isFileLoaded&&currentLevel!=null;
+  bool get isGameSelected =>game!=null;
+  bool get isGameStart=>isGameSelected && _counter == 0;
+  bool get isGameStarted=>isGameSelected && _counter > 0;
+  bool get hasBookmarks=>isGameSelected && game!.hasBookmarks;
 
   MattLevel? getLevel() {
-    if (_fileLoaded()&&_levelSelected()){
+    if (isLevelSelected){
       return selectedFile.levels[currentLevel!];
     }
     else {return null;}
@@ -137,13 +139,13 @@ class _MrMattHomeState extends State<MrMattHome> {
     return result;
   }
   String _getLevelTitle() {
-    if (_fileLoaded()&&_levelSelected()){
+    if (isLevelSelected){
       return '${getLevel()!.title} (level ${(currentLevel??0)+1})';
     }
     else { return "no level selected";}
   }
   String _getTitle() {
-    if (_fileLoaded()) {
+    if (isFileLoaded) {
       return '${selectedFile.title} - ${_getLevelTitle()}';
     }
     else { return "no file loaded: Load a file first!";}
@@ -155,8 +157,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     playBackTimer = Timer.periodic(timerDelay, 
                               (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
     movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
-  }
-
+  } 
   List<Widget> _buildDrawerDestinations(BuildContext context) {
     return [    
       Padding(
@@ -165,23 +166,20 @@ class _MrMattHomeState extends State<MrMattHome> {
               style: Theme.of(context).textTheme.titleSmall,),
             ),
       const Divider(),
-      const NavigationDrawerDestination(icon: Icon(Icons.folder_open), label: Text('Load game')),
+      NavigationDrawerDestination(icon: const Icon(Icons.folder_open), label: const Text('Load game'), enabled:isFilesLoaded),
       const VerticalDivider(width: 60, thickness: 4, color: Colors.black87),
-      const NavigationDrawerDestination(icon: Icon(Icons.download), label: Text('Save game state'), enabled: false),
-      const NavigationDrawerDestination(icon: Icon(Icons.upload), label: Text('Restore game state'), enabled: false),
-      NavigationDrawerDestination(icon: const Icon(Icons.undo), label: const Text('Undo last move (ctrl-Z)'), enabled: _counter>0),
-      NavigationDrawerDestination(icon: const Icon(Icons.play_arrow), label: const Text('Replay moves'), enabled: _counter>0),
-
-
-      // ListTile(leading: , title: , onTap: () { Navigator.pop(context); _loader();}),
+      NavigationDrawerDestination(icon: const Icon(Icons.bookmark_add), label: const Text('Save bookmark'), enabled: isGameStarted),
+      NavigationDrawerDestination(icon: const Icon(Icons.bookmark_remove), label: const Text('Restore bookmark'), enabled: hasBookmarks),
+      NavigationDrawerDestination(icon: const Icon(Icons.undo), label: const Text('Undo last move (ctrl-Z)'), enabled: isGameStarted),
+      NavigationDrawerDestination(icon: const Icon(Icons.play_arrow), label: const Text('Replay moves'), enabled: isGameStarted),
     ];
   }
 
   void _drawerSelected(int index) {
     Map<int,void Function()> destinations = 
       {0: _loader, 
-      1: _saveGame,
-      2: _loadGame,
+      1: _saveBookmark,
+      2: _restoreBookmark,
       3: _undoMove,
       4: _setupPlayback,
       };
@@ -207,9 +205,6 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   @override
   Widget build(BuildContext context) {
-    // MattAssets assets = MattAssets(defaultImageStyle);    
-    // grid ??= game == null ? null : Grid.copy(game!.grid);
-    // /* if (playbackMoves != null) */ {scheduleMicrotask(() async {await _playback();});}   
     logDebug('BBB: start build (main) {${nowString('HH:mm:ss.S')}}');
     return Scaffold(
         appBar: AppBar(
@@ -305,7 +300,7 @@ class _MrMattHomeState extends State<MrMattHome> {
                       // child: Container(decoration: BoxDecoration(color:Colors.green[100], border: const Border.symmetric(),),
                     
                       child: 
-                        !_fileLoaded() ?_loadFilesFirstNotLoaded(context) :
+                        !isFileLoaded ?_loadFilesFirstNotLoaded(context) :
                 
                         MattGameLevelWidget(images:images, 
                                       imageType: imageType,
@@ -475,7 +470,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   
   //Future<MoveResult> _gameMove (Move move, [int repeat = 0]) async {
   Future<void> _gameMove (Move move, [int repeat = 0]) async {
-    if (game == null) {return; }    
+    if (!isGameSelected) {return; }    
     if (!game!.canMove(move)) {       
       logDebug('Uh-oh: can not perform move $move');
       return; 
@@ -483,7 +478,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     // result = await game!.performMove(move, repeat);
     // Future <MoveResult> result;
     MoveResult? result;
-    logDebug('///scheduliting {${nowString('HH:mm:ss.S')}}');
+    logDebug('///scheduliting $move repeat:$repeat {${nowString('HH:mm:ss.S')}}');
     scheduleMicrotask(() async {result = await game!.performMove(move, repeat); _afterMove(result??MoveResult.invalid);});
     logDebug('///scheduled {${nowString('HH:mm:ss.S')}}');
     // tileMoves.add(game!.tileMoves);
@@ -515,11 +510,11 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
 
   void _tileTappedCallBack(Tile? tile){
-    if (game == null || tile == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
+    if (!isGameSelected || tile == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     _moveToTarget(tile);
   }
   void _moveToTarget(Tile tile) {
-    if (game == null || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
+    if (!isGameSelected || (tile.row != game!.mrMatt.row && tile.col != game!.mrMatt.col)) {return;}    
     if (tile.row == game!.mrMatt.row) {
       int delta = tile.col - game!.mrMatt.col;
       _repeatMove(delta > 0 ? Move.right: Move.left, repeat: delta.abs()-1);
@@ -529,15 +524,22 @@ class _MrMattHomeState extends State<MrMattHome> {
       _repeatMove(delta > 0 ? Move.down: Move.up, repeat: delta.abs()-1);
     }
   }
-  void _undoMove(){
-    if (game==null || _counter == 0) {return;}      
+
+  void _setSnapshot(bool restoreLast) {
+    if (!isGameSelected ||
+         (restoreLast && _counter==0) || 
+         (!restoreLast && !game!.hasBookmarks)) {return;}      
+    _counter = restoreLast ? game!.undoLast() : game!.restoreBookmark();
     setState(() {      
-      _counter -= game!.undoLast();
       movesQueue.clear();
       tileMoves!.clear();
       grid = Grid.copy(game!.grid);
       if (!stopwatch.isRunning) {stopwatch.start();}
     });
+
+  }
+  void _undoMove(){
+    _setSnapshot(true);
   }
   void __restart(){
     _haltGame();
@@ -549,7 +551,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
-    if (game==null /*|| _counter == 0*/) {return;}
+    if (!isGameSelected /*|| _counter == 0*/) {return;}
     bool confirm = message != null ? await askConfirm(context, message) : true;
     if (confirm) {__restart();}
   }
@@ -612,7 +614,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   Future<void> _setupPlayback() async {
     logDebug('START setupPlayback');
-    if (!_gameRunning())
+    if (!isGameStarted)
     {return;}
     setState(() {_restartGame(false);});
     _playback(game!.getMoves());
@@ -627,30 +629,35 @@ class _MrMattHomeState extends State<MrMattHome> {
     logDebug('---- END Playback ($_playBackCount)...');
     _playBackCount++;
   }
-  void _saveGame() async {
-    await gameFiles.saveGameFile(player, game!, currentLevel!, 'mr_matt.sav');
+  void _saveBookmark() {
+    if (isGameStarted) { game!.saveBookmark();}
   }
-  Future<MattLevelMoves?> _loadSaveData() async {
-    MattLevelMoves? result;
-    if (await gameFiles.loadSolutionFile('mr_matt.sav')){
-      MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
-      if (saveGameFile != null) {
-        result = saveGameFile.findEntry(player, game!.title,currentLevel!);
-      }
+  void _restoreBookmark() {
+    if (isGameStarted && game!.hasBookmarks){
+      _setSnapshot(false);
     }
-    return result;
   }
-  Future<void> _setupLoad() async {
-    MattLevelMoves? moves = await _loadSaveData();
-    if (moves != null) {
-      setState(() {_restartGame(false);});
-      _playback(moves.moves);
-    }
-  }  
-  void _loadGame() async {
-    await _setupLoad();
-    logDebug('loading');
-  }
+  // Future<MattLevelMoves?> _loadSaveData() async {
+  //   MattLevelMoves? result;
+  //   if (await gameFiles.loadSolutionFile('mr_matt.sav')){
+  //     MattSolutionFile? saveGameFile = gameFiles.solutions['mr_matt.sav'];
+  //     if (saveGameFile != null) {
+  //       result = saveGameFile.findEntry(player, game!.title,currentLevel!);
+  //     }
+  //   }
+  //   return result;
+  // }
+  // Future<void> _setupLoad() async {
+  //   MattLevelMoves? moves = await _loadSaveData();
+  //   if (moves != null) {
+  //     setState(() {_restartGame(false);});
+  //     _playback(moves.moves);
+  //   }
+  // }  
+  // void _loadGame() async {
+  //   await _setupLoad();
+  //   logDebug('loading');
+  // }
   // void wipwap() async {  
   //   int row=random(0,GC.mattHeight);
   //   int col=random(0,GC.mattWidth);

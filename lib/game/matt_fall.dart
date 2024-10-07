@@ -15,7 +15,7 @@ class FallHandler {
   TileMoves get tileMoves =>_tileMoves;
   late Function()? _callback;
   // setting this to true makes the interface very laggy
-  final bool _detailedLog = true; 
+  final bool _detailedLog = false; 
 
   void _log(String s){ 
     if (_detailedLog) logDebug(s);

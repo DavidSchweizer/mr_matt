@@ -182,14 +182,19 @@ class GridColumn {
   }
 }
 class Grid {
+  static int gridCounter = 0;
   List<GridColumn> _columns = [];
   List<GridColumn> get columns=>_columns;
+  late int id;
   Grid() {
+    id = gridCounter++;
     for (int col in GC.colRange()){
       _columns.add(GridColumn(col));
     }
+
   }
   Grid.copy(Grid board) {
+    id = gridCounter++;
     if (_columns.isNotEmpty) {
       _columns = [];
     }

@@ -14,10 +14,15 @@ bool isHorizontalMove(Move move)=>move==Move.left || move==Move.right;
 bool isVerticalMove(Move move)=>move==Move.up || move==Move.down;
 enum MoveResult {invalid,ok,stuck,killed,finish,} // move is invalid, move OK, MrMatt can't move any more, MrMatt was killed, last apple eaten (Win!)
 class MoveRecord {
+  static int idCounter = 0;
   late Move move;
   late int repeat;
   late MoveResult? result;
-  MoveRecord({required this.move, required this.repeat, this.result});
+  late final int id;
+  MoveRecord({required this.move, required this.repeat, this.result}) {
+    id = idCounter++;
+  }
+  bool get isEmpty=>move == Move.none;
   int get nrMoves=>repeat+1;
 }
 class Moves {
@@ -42,21 +47,94 @@ class Moves {
   }
 }
 class GameSnapshot {
-  late Grid _previousGrid;
-  Grid get previousGrid =>_previousGrid;
+  late Grid _grid;
+  Grid get grid =>_grid;
   late MoveRecord _moveRecord; 
   MoveRecord get moveRecord =>_moveRecord;
-  late RowCol? _mrMatt;
-  RowCol get mrMatt =>_mrMatt??previousGrid.findMrMatt();
-  GameSnapshot(Grid previousGrid, Move move, {MoveResult? result,int? repeat, RowCol? mrMatt}) {
-    _previousGrid = previousGrid;
+  late RowCol? _mrMatt;  
+  RowCol get mrMatt =>_mrMatt??grid.findMrMatt();
+  late int? _nrFood;
+  int get nrFood=>_nrFood??grid.nrFood();
+  GameSnapshot({required Grid grid, required Move move, MoveResult? result,int? repeat, RowCol? mrMatt, int? nrFood}) {
+    _grid = grid;
     _moveRecord  = MoveRecord(move:move, repeat:repeat??0, result: result);
     _mrMatt = mrMatt;
+    _nrFood = nrFood;
   }
   int get nrMoves=>moveRecord.nrMoves;
+  bool get isBookmark=>_moveRecord.isEmpty;
+}
+class GameSnapshots {
+  final Queue<GameSnapshot> _snapshots = Queue();
+
+  bool get isEmpty =>_snapshots.isEmpty;
+  bool get isNotEmpty =>_snapshots.isNotEmpty;
+
+  Moves _getMoves([GameSnapshot? lastSnapshot]) {
+    Moves moves = Moves();
+    if (_snapshots.isNotEmpty) {  
+      lastSnapshot??=_snapshots.last;
+      for (GameSnapshot snapshot in _snapshots) {
+        moves.addMove(snapshot.moveRecord);
+        if (snapshot == lastSnapshot)
+          {break;}
+      }
+    }
+    return moves;
+  }
+  Moves getMoves()=>_getMoves();  
+  int nrMovesUntil([GameSnapshot? snapshot]) {
+    if (isEmpty) {return 0;}
+    Moves moves = _getMoves(snapshot);
+    return moves.nrMoves;
+  }
+  MoveRecord? get lastMove => isNotEmpty? _snapshots.last.moveRecord:null;
+  void takeSnapshot({required Grid grid, required Move move, required RowCol mrMatt, required int nrFood, 
+                    MoveResult result=MoveResult.ok, int repeat=0, }) {
+    _snapshots.addLast(GameSnapshot(grid:Grid.copy(grid), move:move, result: result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood));
+  }
+  GameSnapshot? lastSnapshot([bool remove = false, bool removeBookmarks = false]){
+    GameSnapshot? result;
+    if (!isEmpty)
+    {
+      result = remove ? _snapshots.removeLast() : _snapshots.last;
+      if (removeBookmarks) {
+        while (_snapshots.last.isBookmark) {
+          _snapshots.removeLast();
+        }
+      }
+    }
+    return result;
+  }
+  void saveBookmark(Grid grid, RowCol mrMatt, int nrFood) {
+    if (!isEmpty) {
+      takeSnapshot(grid:grid, move: Move.none, mrMatt:mrMatt, nrFood:nrFood);
+    }
+  }
+  GameSnapshot? findLastBookmark() {
+    int index = _snapshots.length-1;
+    while (index >= 0) {
+      if (_snapshots.elementAt(index).isBookmark) {break;}
+      index--;
+    }
+    return index >=0 ? _snapshots.elementAt(index) : null;
+  }
+  bool get hasBookmarks=>findLastBookmark() != null;
+  GameSnapshot? restoreBookmark() {
+    GameSnapshot? bookmark = findLastBookmark();
+    if (bookmark == null) {return null; }
+    while (lastSnapshot() != bookmark) {
+      _snapshots.removeLast();
+    }
+    assert(lastSnapshot()==bookmark);
+    return _snapshots.removeLast(); // remove bookmark as well!
+  }
 }
 
 class MattGame {
+  static int idCounter = 0;
+  late int id;
+
   late Grid _startGrid; // the original grid
   Grid get startGrid=>_startGrid;
 
@@ -67,6 +145,7 @@ class MattGame {
   late int _nrFood; // nr of food (apples)
   int get nrFood=>_nrFood;
   set nrFood(value)=>_nrFood=value;
+  
   bool get isEmpty =>snapshots.isEmpty;
   bool get isNotEmpty =>snapshots.isNotEmpty;
   
@@ -77,7 +156,9 @@ class MattGame {
   bool get levelFinished =>nrFood == 0;
 
   final TileMoves tileMoves = TileMoves();
-  Queue<GameSnapshot> snapshots = Queue();
+  final GameSnapshots snapshots = GameSnapshots();
+  bool get hasBookmarks=>snapshots.hasBookmarks;
+
   final bool _detailedLog = false;
 
   void _log(String s){ 
@@ -86,24 +167,15 @@ class MattGame {
 
   Function()? callback;
   MattGame(Grid grid, {required this.level, required this.title, required this.callback}) {
+    id = idCounter++;
     _startGrid = grid;
     this.grid = grid;
     nrFood = grid.nrFood();    
     mrMatt=grid.findMrMatt();
   }
-  Moves getMoves() {
-    Moves moves = Moves();
-    for (GameSnapshot snapshot in snapshots) {
-      moves.addMove(snapshot.moveRecord);
-    }    
-    return moves;
-  }
-  MoveRecord? get lastMove => snapshots.isNotEmpty? snapshots.last.moveRecord:null;
-  GameSnapshot? get lastSnapshot => snapshots.isNotEmpty? snapshots.last:null;
-
-  void takeSnapshot(Grid current, Move move, MoveResult result, int repeat, RowCol mrMatt) {
-    snapshots.addLast(GameSnapshot(current, move, result: result, repeat: repeat, mrMatt: mrMatt));  
-  }
+  Moves getMoves() =>snapshots.getMoves();
+  MoveRecord? get lastMove => snapshots.lastMove;
+  GameSnapshot? get lastSnapshot => snapshots.lastSnapshot();
 
   bool _moveValid(int row,int col) {    
     if (!GC.isGridRowCol(row,col)) return false;      
@@ -183,7 +255,6 @@ class MattGame {
     int oldCol = mrMatt.col;
     mrMatt = RowCol(row,col);   
     moveTile(oldRow, oldCol, row, col, TileType.mrMatt);
-    // grid.cell(mrMatt.row, mrMatt.col).setEmpty();
     _log('Moved mrMatt to $mrMatt {${nowString('HH:mm:ss.S')}}');
   }
   MoveResult _moveObject(int row, int col, Move move, FallHandler handler) {
@@ -198,7 +269,6 @@ class MattGame {
   }
     
   Future<MoveResult> performMove(Move move, [int repeat = 0]) async {
-  // MoveResult performMove(Move move, [int repeat = 0]) {
     _log('Start perform move {${nowString('HH:mm:ss.S')}} ($move) target ($move) repeat:$repeat');    
     if (!canMove(move)) {
       _log('--- invalid move');    
@@ -206,8 +276,10 @@ class MattGame {
     }
     FallHandler handler = FallHandler(grid, tileMoves, callback);
     MoveResult result;
-    RowCol mrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
-    Grid startGrid = Grid.copy(grid);
+    // RowCol currentMrMatt = RowCol(this.mrMatt.row,this.mrMatt.col);  
+    Grid gridStart = Grid.copy(grid);
+    RowCol mrMattStart = mrMatt;
+    int nrFoodStart = nrFood;
     int performed = 0;
     do {
       result = _performMove(move, handler);
@@ -220,9 +292,8 @@ class MattGame {
       mrMatt = grid.findMrMatt();
       result = MoveResult.stuck;
     }
-    // playTileMoves(); // for now, should be done in interface to simulate movement
-    takeSnapshot(startGrid, move, result, performed-1, mrMatt);
-    _log('SNAPSHOT: end performMove {${nowString('HH:mm:ss.S')}} ($result): repeat = ${lastMove!.repeat}');
+    takeSnapshot(gridStart, move, result, performed-1, mrMattStart, nrFoodStart);
+    _log('SNAPSHOT: end performMove $move {${nowString('HH:mm:ss.S')}} mrMatt: $mrMatt ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
   bool isStuck(){
@@ -271,21 +342,29 @@ class MattGame {
           return false; 
       }
   }
+
+  void takeSnapshot(Grid grid, Move move, MoveResult result, int repeat, RowCol mrMatt, int nrFood) {
+    snapshots.takeSnapshot(grid:grid, move:move, result:result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood);
+  }
+  int _setSnapshot(GameSnapshot? snapshot) {
+    if (snapshot == null) {return 0;}
+    grid = snapshot.grid;
+    nrFood = snapshot.nrFood;    
+    mrMatt = snapshot.mrMatt; 
+    return snapshots.nrMovesUntil(snapshot);
+  }
   int undoLast() {
-    if (snapshots.isEmpty) {return 0;}
-    GameSnapshot lastSnapshot = snapshots.removeLast();
-    grid = lastSnapshot.previousGrid;
-    nrFood = grid.nrFood();    
-    mrMatt = grid.findMrMatt(); 
-    return lastSnapshot.nrMoves;
+    return _setSnapshot(snapshots.lastSnapshot(true, true));
+  }
+  void saveBookmark() {
+    snapshots.saveBookmark(grid, mrMatt, nrFood);
+  }
+  int restoreBookmark(){    
+    return _setSnapshot(snapshots.restoreBookmark());
   }
   void _doCallBack() {
     if (callback != null) {
-        // await Future.delayed(Durations.short1);
-        // logDebug('before callback');
         callback!();
-        // logDebug('after callback');
-        // await Future.delayed(Durations.short1);
       }
   }
   void moveTile(int rowStart,int colStart,int rowEnd,int colEnd,TileType tileTypeEnd) async {
@@ -295,14 +374,5 @@ class MattGame {
     _log('moveTile: ${tileMoves.last} (van ${tileMoves.length})  callback: $callback');
     _doCallBack();
     }
-  // Future<MoveResult> playBack(Moves moves, Function(MoveRecord, MoveResult)? callback) async {
-  //   MoveResult result = MoveResult.invalid;
-  //   for (MoveRecord move in moves.moves) {
-  //       result = await performMove(move.move, move.repeat);
-  //       if (callback!=null) {callback(move, result);}
-  //       if (result != MoveResult.ok){break;}
-  //   }
-  //   return result;
-  // }
 }
 
