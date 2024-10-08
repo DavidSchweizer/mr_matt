@@ -51,7 +51,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   int _playBackCount=0;
   final String matDirectory = p.canonicalize('mat');
 
-  int _counter = 0;
+  int _moveCounter = 0;
   // final MattAssets mattAssets = MattAssets();
   TileImageType imageType = MTC.defaultImageType;
   final MattTileImages images = MattTileImages();
@@ -97,8 +97,8 @@ class _MrMattHomeState extends State<MrMattHome> {
   bool get isFilesLoaded=> gameFiles.currentMatFiles.isNotEmpty;
   bool get isLevelSelected =>isFileLoaded&&currentLevel!=null;
   bool get isGameSelected =>game!=null;
-  bool get isGameStart=>isGameSelected && _counter == 0;
-  bool get isGameStarted=>isGameSelected && _counter > 0;
+  bool get isGameStart=>isGameSelected && _moveCounter == 0;
+  bool get isGameStarted=>isGameSelected && _moveCounter > 0;
   bool get hasBookmarks=>isGameSelected && game!.hasBookmarks;
 
   MattLevel? getLevel() {
@@ -158,6 +158,21 @@ class _MrMattHomeState extends State<MrMattHome> {
                               (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
     movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
   } 
+
+  List<Widget> _levelSelectMenu(BuildContext context, MattFile file, int? levelSelected) {
+    List<Widget> result = [];
+    for (int level = 0; level < file.nrLevels; level++){
+      MattLevel gameLevel = file.levels[level];
+      Widget item = ListTile(title: Text('${level+1}: ${gameLevel.title}'), //hoverColor: Colors.pink, 
+        textColor: level == levelSelected ? Colors.blue : Colors.green, 
+        isThreeLine: false, dense: true, enabled: gameLevel.accessible,
+        onTap: () { Navigator.pop(context); _selectLevel(level); }
+        );
+      result.add(item);
+    }
+    return result;
+  }
+  
   List<Widget> _buildDrawerDestinations(BuildContext context) {
     return [    
       Padding(
@@ -167,6 +182,9 @@ class _MrMattHomeState extends State<MrMattHome> {
             ),
       const Divider(),
       NavigationDrawerDestination(icon: const Icon(Icons.folder_open), label: const Text('Load game'), enabled:isFilesLoaded),
+      
+      // ExpansionTile(leading: const Icon(Icons.select_all), title: const Text('Select level'), children: _levelSelectMenu(context, selectedFile, currentLevel)),
+      const NavigationDrawerDestination(icon: Icon(Icons.format_list_numbered), label: Text('Select level'), enabled: true),
       const VerticalDivider(width: 60, thickness: 4, color: Colors.black87),
       NavigationDrawerDestination(icon: const Icon(Icons.bookmark_add), label: const Text('Save bookmark'), enabled: isGameStarted),
       NavigationDrawerDestination(icon: const Icon(Icons.bookmark_remove), label: const Text('Restore bookmark'), enabled: hasBookmarks),
@@ -174,14 +192,19 @@ class _MrMattHomeState extends State<MrMattHome> {
       NavigationDrawerDestination(icon: const Icon(Icons.play_arrow), label: const Text('Replay moves'), enabled: isGameStarted),
     ];
   }
-
+  void _levelSelect() async {
+    int? newLevel = await selectLevelFromDialog(context, selectedFile, currentLevel??0);
+    if (newLevel != null)
+      {_selectLevel(newLevel);}    
+  }
   void _drawerSelected(int index) {
     Map<int,void Function()> destinations = 
       {0: _loader, 
-      1: _saveBookmark,
-      2: _restoreBookmark,
-      3: _undoMove,
-      4: _setupPlayback,
+      1: _levelSelect,
+      2: _saveBookmark,
+      3: _restoreBookmark,
+      4: _undoMove,
+      5: _setupPlayback,
       };
     logDebug('selected $index');
     void Function()? execute = destinations[index];
@@ -209,7 +232,16 @@ class _MrMattHomeState extends State<MrMattHome> {
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: Text('Mr. Matt ($player) | ${_getTitle()}'),
+          title: Row(
+            children: [
+              Text('Mr. Matt ($player) | ${_getTitle()}'),
+              const VerticalDivider(width: 40),
+              Text('moves: $_moveCounter'),
+              const VerticalDivider(width: 40),
+              const Text('time: '),
+              StopwatchWidget(stopwatch: stopwatch)
+            ],
+          ),// | moves: $_moveCounter | time: ${stopwatch.elapsedTime()}'),
           toolbarHeight: _toolbarHeight,
         ),
         drawer: NavigationDrawer(onDestinationSelected: _drawerSelected,
@@ -228,7 +260,7 @@ class _MrMattHomeState extends State<MrMattHome> {
               ],
             ),
             const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
-            Text('moves: $_counter'),
+            Text('moves: $_moveCounter'),
             
             // const VerticalDivider(color: Colors.black38, width: 10, thickness: 3, indent: 5, endIndent: 5),
             
@@ -420,7 +452,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     stopwatch.reset();
     stopwatch.start();
     setState(() {
-      _counter = 0;
+      _moveCounter = 0;
       selectedFile=mattFile;
       currentLevel = level;
     });
@@ -499,7 +531,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _afterMove(MoveResult result) {
     setState(() {
       GameSnapshot? lastSnapshot = game!.lastSnapshot;
-      _counter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
+      _moveCounter+= lastSnapshot != null? lastSnapshot.nrMoves : 0;
     });
     switch  (result) {
       case MoveResult.finish: { _winner();}
@@ -527,9 +559,9 @@ class _MrMattHomeState extends State<MrMattHome> {
 
   void _setSnapshot(bool restoreLast) {
     if (!isGameSelected ||
-         (restoreLast && _counter==0) || 
+         (restoreLast && _moveCounter==0) || 
          (!restoreLast && !game!.hasBookmarks)) {return;}      
-    _counter = restoreLast ? game!.undoLast() : game!.restoreBookmark();
+    _moveCounter = restoreLast ? game!.undoLast() : game!.restoreBookmark();
     setState(() {      
       movesQueue.clear();
       tileMoves!.clear();
@@ -547,7 +579,7 @@ class _MrMattHomeState extends State<MrMattHome> {
           stopwatch.reset();         
           int newLevel = currentLevel??0;
           _initGame(MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title, callback:_checkPlaybackMove));
-          _counter = 0;
+          _moveCounter = 0;
           stopwatch.start();});
   }
   Future<void> _restartGameCheck([String? message]) async {
@@ -590,7 +622,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     await gameFiles.updateSolution(gameFiles.allSolutionsFile, player, game!, true);
     bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
     if (mounted) {
-      String msg = 'You have completed this level in $_counter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}';
+      String msg = 'You have completed this level in $_moveCounter moves. Super!\nElapsed time: ($format) ${stopwatch.elapsedTime()}';
       if (gameSolved) {
         msg = '$msg\nThis was the last level of this game!';
       }

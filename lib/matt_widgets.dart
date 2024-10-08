@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'game/matt_file.dart';
 import 'game/matt_grid.dart';
+import 'game/matt_level.dart';
 import 'game_grid.dart';
 import 'images.dart';
+import 'utils/log.dart';
+import 'widgets/buttons.dart';
 class MattGameLevelWidget extends StatefulWidget{
   // final MattAssets assets;
   final MattTileImages images;
@@ -83,5 +86,94 @@ class _MattLevelState extends State<MattLevelSelector>{
       }          
     }
     return result;
+  }
+}
+
+class MattLevelSelectDialog extends StatefulWidget {
+  final MattFile? file;
+  final int? currentLevel;
+  const MattLevelSelectDialog({super.key, this.file, this.currentLevel}); 
+
+  @override
+  State<StatefulWidget> createState() => _MattLevelSelectState();
+}
+
+class _MattLevelSelectState extends State<MattLevelSelectDialog>{
+  static const double width = 240;
+  int? selected;
+  @override
+  void initState() {
+    selected = widget.currentLevel;
+    super.initState();  
+  }
+  @override
+  Widget build(BuildContext context) {
+      return Dialog(backgroundColor: Colors.amber[100], 
+                    child: SizedBox(width: width, height:320,
+                      child: Center(
+                        child: Column(
+                          children: [                            
+                              const Padding(padding: EdgeInsets.all(8)),
+                              const Text('Select level'),
+                              const Padding(padding: EdgeInsets.all(8)),
+                              Container(width: width-8, height: 192, 
+                              decoration: BoxDecoration(border: Border.all(), 
+                                borderRadius: const BorderRadius.all(Radius.circular(12))), 
+                                child: ListView(children: _levelSelectMenu(context))),
+                              const Padding(padding: EdgeInsets.all(8)),
+                            Row(mainAxisAlignment: MainAxisAlignment.center,
+                            children:[MattDialogButton(onPressed: () {
+                                    Navigator.of(context).pop(selected);
+                              },
+                              label: "select",
+                              icon: const Icon(Icons.check),
+                              ),
+                              const SizedBox(width: 20),
+                            MattDialogButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(null);
+                              },
+                              label: "cancel",
+                              icon: const Icon(Icons.cancel),
+                              ), ],
+                            ),
+                          ]),
+                        ),
+                    ),
+                    );
+  }
+
+  List<Widget> _levelSelectMenu(BuildContext context) {
+    List<Widget> result = [];
+    if (widget.file != null) {
+      MattFile file = widget.file!;       
+    for (int level = 0; level < file.nrLevels; level++){
+      MattLevel gameLevel = file.levels[level];
+      Widget item = ListTile(title: Text('${level+1}: ${gameLevel.title}'), //hoverColor: Colors.pink, 
+        textColor: level == selected ? Colors.blue :null, 
+        isThreeLine: false, dense: true, enabled: gameLevel.accessible,
+        // onTap: () {setState(() {selected = level;}); }
+        onTap: () {if (level==selected) 
+                    {Navigator.of(context).pop(level);} 
+                    else 
+                    {setState(() {selected = level;});}});        
+      result.add(item);
+      }
+    }
+    return result;
+  }
+}
+
+Future <int?> selectLevelFromDialog(BuildContext context, MattFile file, [int currentLevel=0]) async {
+  try {
+    int? result = await showDialog(context: context, 
+                      builder: (BuildContext context) {
+                         return MattLevelSelectDialog(file: file, currentLevel: currentLevel);
+                      });  
+    return result;
+  }
+  on Exception catch (e) {
+    logDebug('gotcha (selectLevelDialog) $e');
+    return null;
   }
 }
