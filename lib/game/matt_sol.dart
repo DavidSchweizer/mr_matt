@@ -1,8 +1,12 @@
 import 'package:mr_matt/game/matt_line_file.dart';
 import 'matt_game.dart';
 
-class MattLevelMoves extends MattLineFileEntry{
+class MattLevelMoves extends MattLineFileEntry {
   late Moves moves;
+  void setMoves(Moves value) {
+    moves = value;
+    nrMoves = moves.nrMoves;
+  }
   MattLevelMoves({required this.moves,
                 required super.player, required super.gameTitle, required super.level,
                 super.checksum}): super(nrMoves: moves.nrMoves);
@@ -63,7 +67,7 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
       return true;
     }
     else if (moves.nrMoves < current.nrMoves) {
-      current.moves = moves;
+      current.setMoves(moves);
       return true;
     }
     return false;
