@@ -107,16 +107,16 @@ abstract class MattLineFile<FT extends MattLineFileEntry> {
     versionLine='';
     entries.clear();
   }
-  FT? findEntry(String player, String gameTitle, [int level = 0]) {
+  FT? findEntry({String? player, required String gameTitle, int? level = 0}) {
     for (FT entry in entries) {
-      if (player==entry.player && gameTitle==entry.gameTitle && level == entry.level) {
+      if ((player == null || player ==entry.player) && gameTitle==entry.gameTitle && level == entry.level) {
         return entry;
       }
     }
     return null;
   }
   FT? highestLevelEntry(String player, String gameTitle) {
-    FT? result = findEntry(player, gameTitle);
+    FT? result = findEntry(player:player, gameTitle:gameTitle);
     if (result!=null) {
       for (FT entry in entries) {
         if (entry != result && player==entry.player && gameTitle==entry.gameTitle && entry.level > result!.level) {result = entry;}

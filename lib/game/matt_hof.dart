@@ -18,7 +18,7 @@ class MattHallOfFameFile extends MattLineFile<MattLevelHallOfFameEntry>{
             player: player, gameTitle: gameTitle, level: level, nrMoves: nrMoves);
   }
   bool update(String player, String game, int level, int seconds, int nrMoves) {
-    MattLevelHallOfFameEntry? current = findEntry(player,game,level);
+    MattLevelHallOfFameEntry? current = findEntry(player:player,gameTitle:game,level:level);
     if (current == null) {
       entries.add(MattLevelHallOfFameEntry(player: player, gameTitle: game, level: level, seconds: seconds, nrMoves: nrMoves));
       return true;

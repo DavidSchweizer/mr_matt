@@ -57,9 +57,9 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
     return result;
   }
   bool update(String player, String gameTitle, int level, Moves moves) {
-    MattLevelMoves? current = findEntry(player, gameTitle,level);
+    MattLevelMoves? current = findEntry(player:player, gameTitle: gameTitle,level:level);
     if (current == null) {
-      entries.add(MattLevelMoves(moves: moves, player: player, gameTitle: gameTitle, level: level, ));
+      entries.add(MattLevelMoves(moves: moves, player: player, gameTitle: gameTitle, level: level));
       return true;
     }
     else if (moves.nrMoves < current.nrMoves) {
@@ -68,10 +68,10 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
     }
     return false;
   }  
-  int highestLevel(String player, String gameTitle) {
+  int highestLevel({String? player, required String gameTitle}) {
     int level = 0;
     while (true) {
-      if (findEntry(player, gameTitle, level) == null) {break; }
+      if (findEntry(player:player, gameTitle:gameTitle, level:level) == null) {break; }
       level++;
     }
     return level;

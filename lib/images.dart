@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'game/matt_grid.dart';
 
 class TileImageType {
@@ -62,6 +63,7 @@ class TileImageLoader {
     return isLoaded;
   }
   Future<ui.Image> _getUiImage(String imageFilename, int boxWidth) async {
+    // final ByteData assetImageByteData = await assetImage.image.resol.load(imageFilename);
     final ByteData assetImageByteData = await rootBundle.load(imageFilename);
     final codec = await ui.instantiateImageCodec(
       assetImageByteData.buffer.asUint8List(),
@@ -77,6 +79,30 @@ class TileImageLoader {
     return true;
   }
 }
+
+class MattAssetImages {
+  final Map<TileType,Image> images = {};
+  Image? getImage(TileType tileType) {
+    return images[tileType];
+  }
+  late TileImageType? _imageType = MTC.defaultImageType;
+  MattAssetImages([TileImageType? selectType]) {
+    imageType = selectType??MTC.defaultImageType;
+  }
+  TileImageType? get imageType=>_imageType;
+  set imageType(TileImageType? value) {
+    assert (value != null);
+    if (images.isNotEmpty && _imageType != null && value == imageType) { return; }
+    _imageType = value;
+    images.clear();  
+    if (imageType != null) {
+      for (TileType tileType in TileType.values) {
+        images[tileType] = Image.asset(MTC.imageFilename(imageType!.size,imageType!.flavor, tileType));
+      }
+    }
+  }
+}
+
 class MattTileImages {
   final Map<TileType,ui.Image> images = {};  
   late TileImageType? _imageType;

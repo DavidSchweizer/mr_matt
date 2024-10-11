@@ -58,9 +58,24 @@ class GameFiles{
     MattSolutionFile? solution = solutions[filename];
     if (solution == null) {return 0;}
     else {
-      return solution.highestLevel(player, gameTitle);
+      return solution.highestLevel(player: player, gameTitle: gameTitle);
     }
   }
+  MattLevelMoves? findSolution(MattFile file, int level) {
+    for (String solutionFileName in solutions.keys){
+      MattSolutionFile solutionFile = solutions[solutionFileName]!;
+      MattLevelMoves? mattLevelMoves = solutionFile.findEntry(gameTitle: file.title, level: level);
+      if (mattLevelMoves != null) { 
+        return mattLevelMoves;
+      }
+    }
+    return null;
+  }
+
+  bool hasSolution(MattFile file, int level) {
+    return findSolution(file,level) != null;
+  }
+
   Future<bool> loadSolutionFile(String filename) async {
     MattSolutionFile newSolution = MattSolutionFile();
     bool result = await newSolution.parseFile(filename);
