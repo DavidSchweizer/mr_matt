@@ -142,7 +142,10 @@ class _MattSelectImageStyleState extends State<MattSelectImageStyleWidget> {
     }
   }
   void _sizeChanged(String? value) {
-    setState(() {currentSize = value;});
+    setState(() {currentSize = value;
+          if (!MTC.isValidFlavor(currentSize!, currentFlavor!))
+            {currentFlavor = MTC.defaultFlavor;}
+    });
     _imageTypeChanged();
   }
   void _flavorChanged(String? value) {

@@ -61,6 +61,7 @@ class MattSolutionFile extends MattLineFile<MattLevelMoves> {
     return result;
   }
   bool update(String player, String gameTitle, int level, Moves moves) {
+    assert (moves.isFinal);
     MattLevelMoves? current = findEntry(player:player, gameTitle: gameTitle,level:level);
     if (current == null) {
       entries.add(MattLevelMoves(moves: moves, player: player, gameTitle: gameTitle, level: level));

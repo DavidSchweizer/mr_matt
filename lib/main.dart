@@ -544,7 +544,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _winner(bool played) async {
     _haltGame();
     isLost = false;
-    assert (game!.levelFinished == true); 
+    assert (game!.levelFinished); 
     String format = stopwatch.hours > 0 ? 'hh:mm:ss':'mm:ss';   
     await gameFiles.updateSolution(gameFiles.allSolutionsFile, player, game!, true);
     bool gameSolved = currentLevel! == selectedFile.nrLevels - 1;
@@ -559,7 +559,8 @@ class _MrMattHomeState extends State<MrMattHome> {
         selectedFile.levels[currentLevel!+1].accessible = true;
       }
     }
-    setState(() { _selectLevel(currentLevel! + (gameSolved? 0: 1));});    
+    if (played)
+      {setState(() { _selectLevel(currentLevel! + (gameSolved? 0: 1));}); }
   }
   void _loader() {
     _haltGame();

@@ -28,6 +28,7 @@ class MoveRecord {
 class Moves {
   List<MoveRecord> moves = [];
   int _nrMoves = 0;
+  bool isFinal = false;
   void clear(){
     moves.clear();
     _nrMoves = 0;
@@ -55,14 +56,18 @@ class GameSnapshot {
   RowCol get mrMatt =>_mrMatt??grid.findMrMatt();
   late int? _nrFood;
   int get nrFood=>_nrFood??grid.nrFood();
-  GameSnapshot({required Grid grid, required Move move, MoveResult? result,int? repeat, RowCol? mrMatt, int? nrFood}) {
+  late bool? _isFinished;
+  bool get isFinished=>_isFinished??false;
+  GameSnapshot({required Grid grid, required Move move, MoveResult? result,int? repeat, RowCol? mrMatt, int? nrFood, bool? isFinished}) {
     _grid = grid;
     _moveRecord  = MoveRecord(move:move, repeat:repeat??0, result: result);
     _mrMatt = mrMatt;
     _nrFood = nrFood;
+    _isFinished = isFinished;
   }
   int get nrMoves=>moveRecord.nrMoves;
   bool get isBookmark=>_moveRecord.isEmpty;
+  bool get levelFinished=>_isFinished??nrFood==0;
 }
 class GameSnapshots {
   final Queue<GameSnapshot> _snapshots = Queue();
@@ -79,6 +84,7 @@ class GameSnapshots {
         if (snapshot == lastSnapshot)
           {break;}
       }
+      moves.isFinal = lastSnapshot.levelFinished;
     }
     return moves;
   }
@@ -90,8 +96,8 @@ class GameSnapshots {
   }
   MoveRecord? get lastMove => isNotEmpty? _snapshots.last.moveRecord:null;
   void takeSnapshot({required Grid grid, required Move move, required RowCol mrMatt, required int nrFood, 
-                    MoveResult result=MoveResult.ok, int repeat=0, }) {
-    _snapshots.addLast(GameSnapshot(grid:Grid.copy(grid), move:move, result: result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood));
+                    MoveResult result=MoveResult.ok, int repeat=0, bool isFinished = false, }) {
+    _snapshots.addLast(GameSnapshot(grid:Grid.copy(grid), move:move, result: result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood, isFinished: isFinished));
   }
   GameSnapshot? lastSnapshot([bool remove = false, bool removeBookmarks = false]){
     GameSnapshot? result;
@@ -292,7 +298,7 @@ class MattGame {
       mrMatt = grid.findMrMatt();
       result = MoveResult.stuck;
     }
-    takeSnapshot(gridStart, move, result, performed-1, mrMattStart, nrFoodStart);
+    takeSnapshot(gridStart, move, result, performed-1, mrMattStart, nrFoodStart, result==MoveResult.finish);
     _log('SNAPSHOT: end performMove $move {${nowString('HH:mm:ss.S')}} mrMatt: $mrMatt ($result): repeat = ${lastMove!.repeat}');
     return result;     
   }
@@ -343,8 +349,8 @@ class MattGame {
       }
   }
 
-  void takeSnapshot(Grid grid, Move move, MoveResult result, int repeat, RowCol mrMatt, int nrFood) {
-    snapshots.takeSnapshot(grid:grid, move:move, result:result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood);
+  void takeSnapshot(Grid grid, Move move, MoveResult result, int repeat, RowCol mrMatt, int nrFood, [bool isFinished=false]) {
+    snapshots.takeSnapshot(grid:grid, move:move, result:result, repeat: repeat, mrMatt: mrMatt, nrFood: nrFood, isFinished: isFinished );
   }
   int _setSnapshot(GameSnapshot? snapshot) {
     if (snapshot == null) {return 0;}
