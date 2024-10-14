@@ -20,9 +20,30 @@ import 'utils/log.dart';
 import 'widgets/dialogs.dart';
 import 'widgets/stopwatch.dart';
 import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
 
-void main() {
+
+Future<void> initWindowManager() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = WindowOptions(
+    size: Size(1200, 600),
+    center: true,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.normal,
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });  
+  windowManager.setMinimumSize(Size(1000,600));
+}
+
+void main() async {
   initLogging();
+  await initWindowManager();
   runApp(const MrMattApp());
 }
 
@@ -152,7 +173,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   String _getLevelTitle() {
     if (isLevelSelected){
-      return '${getLevel()!.title} (level ${(currentLevel??0)+1})';
+      return getLevel()!.title;
     }
     else { return "no level selected";}
   }
@@ -169,6 +190,7 @@ class _MrMattHomeState extends State<MrMattHome> {
     playBackTimer = Timer.periodic(timerDelay, 
                               (timer) {if (movesQueue.isNotEmpty) {_playbackCheck(timer);}});
     movesTimer = Timer.periodic(const Duration(milliseconds:5), (timer) {_playbackMove(timer);});
+    windowManager.setTitle('Mr. Matt ($player)');
   } 
 
   List<Widget> _buildDrawerDestinations(BuildContext context) {
@@ -241,19 +263,27 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   @override
   Widget build(BuildContext context) {
+    TextStyle defaultStyle = DefaultTextStyle.of(context).style;
+    // TextStyle style = TextStyle(color: Colors.black, fontSize: 16);
+    TextStyle style2 = TextStyle(color: defaultStyle.color, fontSize: 30);
+    TextStyle style2b = TextStyle(color: defaultStyle.color, fontSize: 20);
+    TextStyle style3 = TextStyle(color: Colors.black, fontSize: 30);
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: Row(
             children: [
-              Text('Mr. Matt ($player) | ${_getTitle()}'),
-              const VerticalDivider(width: 40),
-              Text('moves: $_moveCounter'),
-              const VerticalDivider(width: 40),
-              const Text('time: '),
-              StopwatchWidget(stopwatch: stopwatch)
-            ],
-          ),// | moves: $_moveCounter | time: ${stopwatch.elapsedTime()}'),
+              // RichText(text: TextSpan(text: 'Mr. Matt ($player)', 
+              //   style: style)),
+              //   const VerticalDivider(width: 40),
+              RichText(text: TextSpan(text:_getTitle(), style: style2, children: [TextSpan(text: ' (level ${(currentLevel??0)+1})', style: style2b)])),
+      	      const VerticalDivider(width: 20),
+              RichText(text: TextSpan(text: 'moves: $_moveCounter', style: style3)),
+              const VerticalDivider(width: 20),
+              RichText(text: TextSpan(text:'time: ', style: style3)),
+              StopwatchWidget(stopwatch: stopwatch)              
+              ])     
+          ,// | moves: $_moveCounter | time: ${stopwatch.elapsedTime()}'),
           toolbarHeight: _toolbarHeight,
         ),
         drawer: NavigationDrawer(onDestinationSelected: _drawerSelected,
@@ -494,26 +524,27 @@ class _MrMattHomeState extends State<MrMattHome> {
     isLost = false;
     _setSnapshot(true);
   }
-  void __restart(){
+  void __restart([bool keepTime= false]){
     _haltGame();
     setState(() {    
-          stopwatch.reset();         
+          if (!keepTime)
+            {stopwatch.reset();}
           int newLevel = currentLevel??0;
           _initGame(MattGame(selectedFile.levels[newLevel].grid, level: newLevel, title: selectedFile.title, callback:_checkPlaybackMove));
           _moveCounter = 0;
           isLost = false;
           stopwatch.start();});
   }
-  Future<void> _restartGameCheck([String? message]) async {
+  Future<void> _restartGameCheck({String? message, bool keepTime=false}) async {
     if (!isGameSelected ) {return;}
     bool confirm = message != null ? await askConfirm(context, message) : true;
-    if (confirm) {__restart();}
+    if (confirm) {__restart(keepTime);}
   }
-  Future <void> _restartGame([bool check=true]) async {
-    return await _restartGameCheck(check ? "Really start again?" : null);
+  Future <void> _restartGame({bool check=true, bool keepTime=false}) async {
+    return await _restartGameCheck(message: check ? "Really start again?" : null, keepTime:keepTime);
   }
   void _restartGame2() async {
-    await _restartGame(isGameStarted);
+    await _restartGame(check:isGameStarted);
   }
   void _repeatMove(Move move, { int? repeat}) async {
     int nrTimes = 0;
@@ -529,7 +560,6 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _haltGame(){
     stopwatch.stop();
     movesQueue.clear();
-    // tileMoves.clear();
     setState(() {
     });
   }
@@ -580,15 +610,15 @@ class _MrMattHomeState extends State<MrMattHome> {
     await __setupPlayback(levelMoves.moves);
   }
 
-  Future<void> __setupPlayback(Moves moves) async {
-    setState(() {_restartGame(false);});
+  Future<void> __setupPlayback(Moves moves, [bool keepTime=false]) async {
+    setState(() {_restartGame(check:false, keepTime: keepTime);});
     _playback(moves);
   }
 
   Future<void> _setupPlayback() async {
     if (!isGameStarted)
     {return;}
-    __setupPlayback(game!.getMoves());
+    __setupPlayback(game!.getMoves(), true);
   }
   void _playbackCheck(Timer timer) {
     playBackOne(); 
