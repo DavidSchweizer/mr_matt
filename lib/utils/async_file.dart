@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-
 /* 
   sending (text) file write tasks to an isolate for handling
   this should enable the main process to quickly continue
