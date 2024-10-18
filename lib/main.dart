@@ -1,6 +1,7 @@
 // FIRST: consolidate versions!
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -48,7 +49,7 @@ void main() async {
 }
 
 enum DrawerDestination {openGame, selectLevel, restart, saveBookmark,restoreBookmark, 
-          undoLast, replay, showSolution, selectStyle }
+          undoLast, replay, showSolution, selectStyle, exit }
 
 class MrMattApp extends StatelessWidget {
   const MrMattApp({super.key});
@@ -179,7 +180,7 @@ class _MrMattHomeState extends State<MrMattHome> {
   }
   String _getTitle() {
     if (isFileLoaded) {
-      return '${selectedFile.title} - ${_getLevelTitle()}';
+      return selectedFile.title;
     }
     else { return "no file loaded: Load a file first!";}
   }
@@ -212,7 +213,9 @@ class _MrMattHomeState extends State<MrMattHome> {
       DrawerDestination.showSolution:
       {'label': 'Show solution', 'icon': Icons.slideshow, 'enabled':hasKnownSolution, 'function': _playSolution, 'divider': true },
      DrawerDestination.selectStyle:
-      {'label': 'Select style', 'icon': Icons.style, 'enabled':true, 'function': _selectStyle },
+      {'label': 'Select style', 'icon': Icons.style, 'enabled':true, 'function': _selectStyle, 'divider': true },
+     DrawerDestination.exit:
+      {'label': 'Quit', 'icon': Icons.exit_to_app, 'enabled':true, 'function': _exit },
     };
     
     Image? mrMattImage = assetImages.getImage(isLost? TileType.loser: TileType.mrMatt);
@@ -265,7 +268,8 @@ class _MrMattHomeState extends State<MrMattHome> {
   Widget build(BuildContext context) {
     TextStyle defaultStyle = DefaultTextStyle.of(context).style;
     // TextStyle style = TextStyle(color: Colors.black, fontSize: 16);
-    TextStyle style2 = TextStyle(color: defaultStyle.color, fontSize: 30);
+    TextStyle style2 = TextStyle(color: Colors.blue[500], fontSize: 30);
+    TextStyle style2a = TextStyle(color: defaultStyle.color, fontSize: 30);
     TextStyle style2b = TextStyle(color: defaultStyle.color, fontSize: 20);
     TextStyle style3 = TextStyle(color: Colors.black, fontSize: 30);
     return Scaffold(
@@ -276,7 +280,9 @@ class _MrMattHomeState extends State<MrMattHome> {
               // RichText(text: TextSpan(text: 'Mr. Matt ($player)', 
               //   style: style)),
               //   const VerticalDivider(width: 40),
-              RichText(text: TextSpan(text:_getTitle(), style: style2, children: [TextSpan(text: ' (level ${(currentLevel??0)+1})', style: style2b)])),
+              RichText(text: TextSpan(text:_getTitle(), style: style2, children: [
+                TextSpan(text: '  ${_getLevelTitle()}', style: style2a), 
+                TextSpan(text: ' (level ${(currentLevel??0)+1})', style: style2b)])),
       	      const VerticalDivider(width: 20),
               RichText(text: TextSpan(text: 'moves: $_moveCounter', style: style3)),
               const VerticalDivider(width: 20),
@@ -629,6 +635,14 @@ class _MrMattHomeState extends State<MrMattHome> {
   void _restoreBookmark() {
     if (isGameStarted && game!.hasBookmarks){
       _setSnapshot(false);
+    }
+  }
+  void _exit() async {
+    // note seems not to work on apple things
+    bool confirm = await askConfirm(context, 'Really, really, really quit?');
+    if (confirm) {
+      SystemNavigator.pop();
+      exit(0);
     }
   }
 }
